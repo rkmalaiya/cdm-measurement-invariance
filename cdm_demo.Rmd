@@ -1,0 +1,192 @@
+---
+title: "CDM Demo"
+output: html_notebook
+---
+
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+
+```
+
+# Read Data
+```{r}
+X = data.ecpe$data
+Q = data.ecpe$q.matrix
+df.data <- X
+```
+
+```{r}
+X
+```
+
+# Total marks for each student
+
+```{r}
+
+df.t <- X %>% mutate(total_marks = rowSums(.[-1]), grand_total = 28, percentage = total_marks / grand_total, 
+                     grades = ifelse(percentage >= 0.9, "A",
+                                     ifelse(percentage >= 0.8 & percentage < 0.9, "B",
+                                            ifelse(percentage >= 0.7 & percentage < 0.8, "C",
+                                                   ifelse(percentage >= 0.6 & percentage < 0.7, "D", "F")))
+                                     ), grades = factor(grades)) %>% select(id, total_marks, grand_total, percentage, grades)
+
+df.data = df.data %>% inner_join(df.t)
+
+glimpse(df.data)
+
+```
+
+Density plot for total marks acheived by students.
+```{r}
+ggplot(df.t) + aes(x=total_marks, fill = grades) + geom_histogram(binwidth = 1) + geom_vline(aes(xintercept = median(df.t$total_marks), color = "Median Marks")) + geom_vline( aes(xintercept = mean(df.t$grand_total),color = "Max Marks")) + scale_x_continuous(breaks = seq(5,30,1)) + theme_pubclean() + scale_fill_brewer(palette="Pastel2") + labs(color = "")
+```
+
+```{r}
+ggplot(df.t) + aes(x=percentage) + geom_density() + geom_vline(xintercept = mean(df.t$percentage)) + 
+   labs(color = "") + scale_x_continuous(breaks = seq(0,1, 0.05)) + geom_text(aes(label = paste("Mean: ",round(mean(df.t$percentage),3)), x = mean(df.t$percentage), y = 0.5))
+```
+
+
+
+## Questions least answered
+
+
+Below graph shows that none of the questions have been completely answered by students.
+```{r}
+df.t <- df.data %>% select(id, E1:E28) %>% gather(key="question", value = "answered", -id, factor_key = TRUE) %>% group_by(question) %>% summarise(total_answered = sum(answered), total_students = dim(X)[1], percent = total_answered/total_students, type=ifelse(percent < 0.5, "Difficult Question", "Normal Question"))
+df.t
+
+ggplot(df.t) + aes(x=question, y=total_answered, fill = type) + geom_col(alpha = 0.6) + geom_hline(aes(yintercept = dim(X)[1], color = "Total Students"))  + 
+  geom_hline(aes(yintercept = min(df.t$total_answered), color = " Least Answered Question"))  + 
+  geom_hline(aes(yintercept = max(df.t$total_answered), color = " Most Answered Question"))  + theme_pubclean() + labs(color = "", fill="")
+```
+
+## By Grades
+```{r}
+
+df.t <- df.data %>% select(id, grades, E1:E28) %>% gather(key="question", value = "answered", -id, -grades, factor_key = TRUE) %>% group_by(question, grades) %>% summarise(total_answered = sum(answered), total_students = n(), percent = total_answered/total_students, type=ifelse(percent < 0.5, "Difficult Question", "Normal Question"))
+df.t
+
+
+ggplot(df.t) + aes(x=question, y=percent, fill = type) + geom_col(alpha = 0.6, position = position_stack() ) + theme_pubclean() + facet_grid(grades~.) + labs(y = "Percentage", title = "Percentage of students in a particular grade answering a particular Item")+ theme_pubclean() + labs(color = "", fill="")
+
+#ggplot(df.t) + aes(x=question, y=percent, fill = grades) + geom_col(alpha = 0.6, position = position_stack() ) + theme_pubclean() + facet_grid(grades~type) + labs(y = "Percentage", title = "Percentage of students in a particular grade answering a particular Item")
+```
+
+```{r}
+df.t <- df.data %>% select(id, grades, E1:E28) %>% gather(key="question", value = "answered", -id, -grades, factor_key = TRUE) %>% group_by(question, grades) %>% summarise(total_answered = sum(answered), total_students = n(), percent = total_answered/total_students)
+
+ggplot(df.t) + aes(x=grades, y=percent, fill = grades) + geom_col(stat = "identity", alpha = 0.6 ) + theme_pubclean()+ labs(y = "Percent answered out of total in a grade", title = "How Many students in a particular grade answered a particular Item") + facet_wrap(.~question)
+
+```
+
+
+# Bootstrap Sample 
+
+Boot requires a custom function that would return row wise stats. In case of dataframe, each row is considered as a multi-variate observation. First parameter of the custom function takes the data input and second parameter takes the importance of data given current bootstrap iteration. stype defines second parameter.
+
+```{r}
+total_percent_fn <- function(df, i, df.t2 = df.data) {
+  
+  df.t <- df.t2[i,]
+  df.master <- df.t %>% filter(grades == "A" | grades == "B")
+  df.non_master <- df.t %>% filter(grades != "A" & grades != "B")
+  
+  
+  return(c(mean(df.master$percentage), mean(df.non_master$percentage)))
+  #return (mean(df.t$percentage))
+
+  
+} 
+
+X.bt <- boot(data = X %>% select(-id), statistic = total_percent_fn, R = 1000, stype = "i")
+
+
+summary(X.bt)
+
+plot(X.bt)
+
+boot.ci(X.bt, type = c("norm", "basic", "perc", "stud"))
+```
+
+
+```{r}
+glimpse(X.bt$t)
+
+```
+
+```{r}
+glimpse(df.data)
+```
+
+
+# Now the actual
+
+```{r}
+total_percent_fn <- function(df, i = 1:dim(df)[1]) {
+  
+  browser()
+  df.t <- df[i,]
+  df.master <- df.t %>% filter(grades == "A" | grades == "B")
+  df.non_master <- df.t %>% filter(grades != "A" & grades != "B")
+  
+  
+  # Calculating percent of students answering a question and not total marks/percentage of student in the exam
+  df.master <- df.master %>% select(id, E1:E28) %>% gather(key="question", value = "answered", -id, factor_key = TRUE) %>% group_by(question) %>% summarise(total_answered = sum(answered), total_students = n(), percent_students_answered = total_answered/total_students) %>% spread(key="question", value = "percent_students_answered")
+  
+  df.non_master <- df.non_master %>% select(id, E1:E28) %>% gather(key="question", value = "answered", -id, factor_key = TRUE) %>% group_by(question) %>% summarise(total_answered = sum(answered), total_students = n(), percent_students_answered = total_answered/total_students) %>% spread(key="question", value = "percent_students_answered")
+  
+  
+  #return(c(mean(df.master$percentage), mean(df.non_master$percentage)))
+  #return (mean(df.t$percentage))
+  
+  return(cbind(df.master$percent_students_answered, df.non_master$percent_students_answered))
+  
+  
+} 
+
+total_percent_fn(df.data)
+
+
+
+
+
+
+X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 10, stype = "i")
+
+summary(X.bt)
+
+plot(X.bt)
+```
+
+
+```{r}
+X.bt$t
+
+```
+
+
+## Store Samples
+```{r}
+X.samples <- boot.array(X.bt, indices = TRUE)
+```
+
+```{r}
+ratio <- function(d, w) sum(d$x * w)/sum(d$u * w)
+boot(city, ratio, R = 999, stype = "w")
+```
+
+
+# Calculate item parameters
+
+```{r}
+
+
+
+```
+
