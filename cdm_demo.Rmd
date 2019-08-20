@@ -133,7 +133,7 @@ See how the items are performing
 ```{r}
 
 df.data %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% 
-  ggplot() + aes(x=questions, y = percent_questions_answered, fill = mastery) + geom_col(position = "dodge") + facet_grid(mastery~.) + theme_pubclean()
+  ggplot() + aes(x=questions, y = percent_questions_answered, color = mastery) + geom_point() + facet_grid(mastery~.) + theme_pubclean()
 
 ```
 
@@ -144,9 +144,13 @@ total_percent_fn <- function(df, i = 1:dim(df)[1]) {
   
   #browser()
   df.t <- df[i,]
-
- df.t1 <- df.t %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% spread(key="questions", value = "percent_questions_answered") %>% ungroup() %>%select(-mastery)
-  
+  #df.t <- df.data
+ df.t <- df.t %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% unite("questions",mastery, questions) %>% ungroup()
+ 
+ col_order = df.t$questions
+ 
+ df.t1 <- df.t %>% spread(key=1, value = percent_questions_answered, convert = TRUE)  %>% select(!!!col_order)
+ 
  return(as.matrix(df.t1))
     
 } 
@@ -159,7 +163,7 @@ t
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 1, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 10, stype = "i")
 
 plot(X.bt)
 ```
@@ -168,11 +172,27 @@ plot(X.bt)
 X.bt$t
 ```
 
+# Extract Data structure for different data divisions
 
-## Store Samples
 ```{r}
-X.samples <- boot.array(X.bt, indices = TRUE)
+
+df.group_mastery <- X.bt$t[,1:28] %>% as_tibble() %>% mutate(group = "Mastery")
+df.group_non_mastery <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(group = "Non-Mastery")
+
+df.data.sim <- df.group_mastery %>% bind_rows(df.group_non_mastery)
+df.data.sim
+
+
 ```
+
+```{r}
+df.t <- df.data.sim
+col_names <- colnames(df.t %>% select(-group)) 
+
+df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %>% mutate(questions = factor(questions, levels = col_names, ordered = TRUE)) %>% ggplot() + aes(x=questions, y = percent_questions_answered, color = group) + facet_grid(group ~ .) + geom_boxplot() 
+```
+
+
 
 # Calculate item parameters
 
