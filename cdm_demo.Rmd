@@ -163,13 +163,13 @@ t
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 10, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 1000, stype = "i")
 
 plot(X.bt)
 ```
 
 ```{r}
-X.bt$t
+#X.bt$t
 ```
 
 # Extract Data structure for different data divisions
@@ -187,9 +187,32 @@ df.data.sim
 
 ```{r}
 df.t <- df.data.sim
-col_names <- colnames(df.t %>% select(-group)) 
+col_names <- colnames(df.t %>% select(-group)) %>% str_replace("V","Q")
 
-df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %>% mutate(questions = factor(questions, levels = col_names, ordered = TRUE)) %>% ggplot() + aes(x=questions, y = percent_questions_answered, color = group) + facet_grid(group ~ .) + geom_boxplot() 
+df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, questions) %>% summarise( sampling_mean = mean(percent_questions_answered), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((percent_questions_answered - sampling_mean)^2)/(n() - 1)) )
+
+```
+
+```{r}
+
+df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, questions) %>% summarise( sampling_mean = mean(percent_questions_answered), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((percent_questions_answered - sampling_mean)^2)/(n() - 1)) ) %>% 
+  
+  ggplot() + aes(x=questions, y = sampling_mean, color = group) + facet_grid(group ~ .)  +geom_errorbar( aes(ymin=sampling_mean - sampling_error, 
+                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(size = 1)
+
+
+```
+
+
+```{r}
+
+library(CDM)
+
+model_dina <- din(X %>% select(-id), Q)
+model_dina$slip
+
 ```
 
 
@@ -197,8 +220,37 @@ df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %
 # Calculate item parameters
 
 ```{r}
+library(CDM)
+total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
+  
+  #browser()
+  df.t <- df[i,]
+  df.t <- df.data
+ df.t <- df.t %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% unite("questions",mastery, questions) %>% ungroup()
+ 
+ df.t.mastery <- df.t %>% filter(mastery == "Mastery") %>% select(E1:E28)
+ df.t.non_mastery <- df.t %>% filter(mastery == "Non-Mastery") %>% select(E1:E28)
+ 
+ 
+ df.cdm <- CDM::din(df.t.mastery, Q)
+ 
+ df.cdm$guess$est
+ df.cdm$slip$est
+ 
+ 
+ col_order = df.t$questions
+ 
+ df.t1 <- df.t %>% spread(key=1, value = percent_questions_answered, convert = TRUE)  %>% select(!!!col_order)
+ 
+ return(as.matrix(df.t1))
+    
+} 
 
+t <- total_percent_fn(df.data)
 
-
+t
 ```
+
+
+
 
