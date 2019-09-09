@@ -225,32 +225,49 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
   
   #browser()
   df.t <- df[i,]
-  df.t <- df.data
- df.t <- df.t %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% unite("questions",mastery, questions) %>% ungroup()
+  #df.t <- df.data
  
- df.t.mastery <- df.t %>% filter(mastery == "Mastery") %>% select(E1:E28)
- df.t.non_mastery <- df.t %>% filter(mastery == "Non-Mastery") %>% select(E1:E28)
- 
- 
- df.cdm <- CDM::din(df.t.mastery, Q)
- 
- df.cdm$guess$est
- df.cdm$slip$est
+  df.t.mastery <- df.t %>% filter(mastery == "Mastery") %>% select(E1:E28)
+  df.t.non_mastery <- df.t %>% filter(mastery == "Non-Mastery") %>% select(E1:E28)
  
  
- col_order = df.t$questions
+  df.cdm <- CDM::din(df.t.mastery, Q)
  
- df.t1 <- df.t %>% spread(key=1, value = percent_questions_answered, convert = TRUE)  %>% select(!!!col_order)
+  df.t <- df.t %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% unite("questions",mastery, questions) %>% ungroup()
  
- return(as.matrix(df.t1))
+ 
+  df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("mastery_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value")
+ 
+  
+  df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("mastery_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value")
+ 
+  df.t <- cbind(df.t1, df.t2)
+  
+ return(as.matrix(df.t))
     
 } 
 
-t <- total_percent_fn(df.data)
+t <- total_cdm_fn(df.data)
 
-t
+t 
 ```
 
+```{r}
 
+X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 10, stype = "i")
+
+plot(X.bt)
+```
+
+```{r}
+
+df.group_mastery <- X.bt$t %>%  %>% mutate(group = "Mastery")
+df.group_non_mastery <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(group = "Non-Mastery")
+
+df.data.sim <- df.group_mastery %>% bind_rows(df.group_non_mastery)
+df.data.sim
+
+
+```
 
 
