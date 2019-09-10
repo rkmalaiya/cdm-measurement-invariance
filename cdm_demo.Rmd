@@ -231,17 +231,23 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
   df.t.non_mastery <- df.t %>% filter(mastery == "Non-Mastery") %>% select(E1:E28)
  
  
-  df.cdm <- CDM::din(df.t.mastery, Q)
+  df.cdm <- CDM::din(df.t.mastery, Q, progress=FALSE)
  
-  df.t <- df.t %>% select(id, mastery, E1:E28) %>% gather(key = "questions", value = "answer", -id, -mastery, factor_key = TRUE) %>% group_by(mastery, questions) %>% summarize( percent_questions_answered = sum(answer) / n()) %>% unite("questions",mastery, questions) %>% ungroup()
- 
- 
-  df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("mastery_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value")
+   df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("mastery_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("mastery_slip_E", seq(1,28,1)))
  
   
-  df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("mastery_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value")
+  df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("mastery_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("mastery_guess_E", seq(1,28,1)))
  
-  df.t <- cbind(df.t1, df.t2)
+  
+  df.cdm <- CDM::din(df.t.non_mastery, Q, progress=FALSE)
+ 
+  df.t3 <- tibble("value" = df.cdm$slip$est, "key" = paste0("non_mastery_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("non_mastery_slip_E", seq(1,28,1)))
+ 
+  
+  df.t4 <- tibble("value" = df.cdm$guess$est, "key" = paste0("non_mastery_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("non_mastery_guess_E", seq(1,28,1)))
+  
+  
+  df.t <- cbind(df.t1, df.t2, df.t3, df.t4)
   
  return(as.matrix(df.t))
     
@@ -254,20 +260,41 @@ t
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 10, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 1000, stype = "i")
 
 plot(X.bt)
 ```
 
 ```{r}
 
-df.group_mastery <- X.bt$t %>%  %>% mutate(group = "Mastery")
-df.group_non_mastery <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(group = "Non-Mastery")
+df.m_slip <- X.bt$t[,1:28] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Mastery")
+df.m_guess <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Mastery")
 
-df.data.sim <- df.group_mastery %>% bind_rows(df.group_non_mastery)
+
+df.nm_slip <- X.bt$t[,57:84] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Non-Mastery")
+df.nm_guess <- X.bt$t[,85:112] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Non-Mastery")
+
+df.data.sim <- df.m_slip %>% bind_rows(df.m_guess) %>% bind_rows(df.nm_slip) %>% bind_rows(df.nm_guess)
 df.data.sim
-
 
 ```
 
+```{r}
+df.t <- df.data.sim
+col_names <- colnames(df.t %>% select(-group)) %>% str_replace("V","Q")
 
+df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) )
+```
+
+
+```{r}
+
+df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
+  
+  ggplot() + aes(x=questions, y = sampling_mean, color = parameter) + facet_grid(group ~ .  )  +geom_errorbar( aes(ymin=sampling_mean - sampling_error, 
+                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples")
+
+
+```
