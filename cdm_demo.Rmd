@@ -40,9 +40,9 @@ df.t <- X %>% mutate(total_marks = rowSums(.[-1]), grand_total = 28, percentage 
   mutate(mastery = factor(case_when(
     grades == "A" | grades == "B" ~ "Mastery",
     grades == "B" | grades == "C" ~ "Average",
-    grades == "D" | grades == "F" ~ "Non-Mastery"), levels = c("Mastery", "Average" ,"Non-Mastery"), ordered = TRUE)) %>%
+    grades == "D" | grades == "F" ~ "Non-Mastery"))) %>%
   
-  select(id, total_marks, grand_total, percentage, grades, mastery)
+  select(id, total_marks, grand_total, percentage, grades, mastery) %>% group_by(mastery) %>% mutate(mastery_n = paste0(mastery,"(",n(),")")) %>% ungroup() %>% mutate(mastery = mastery_n)
 
 df.data = df.data %>% inner_join(df.t)
 
@@ -59,7 +59,7 @@ ggplot(df.t) + aes(x=total_marks, fill = grades) + geom_histogram(binwidth = 1, 
 
 ```{r}
 ggplot(df.t) + aes(x=percentage, fill = mastery) + geom_density(alpha = 0.4) +  
-   labs(color = "") + scale_x_continuous(breaks = seq(0,1, 0.05)) +  facet_wrap(mastery~.) + stat_mean(aes(color = "Mean", y=percentage), show.legend = TRUE)
+   labs(color = "") + scale_x_continuous(breaks = seq(0,1, 0.05)) +  facet_wrap(mastery~.) + stat_mean(aes(color = "Mean", y=percentage), show.legend = TRUE) + coord_flip()
 ```
 
 
@@ -116,7 +116,7 @@ total_percent_fn <- function(df, i, df.t2 = df.data) {
   
 } 
 
-X.bt <- boot(data = X %>% select(-id), statistic = total_percent_fn, R = 1000, stype = "i")
+X.bt <- boot(data = X %>% select(-id), statistic = total_percent_fn, R = 100, stype = "i")
 
 
 summary(X.bt)
@@ -206,7 +206,7 @@ df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %
                                                                                                                                                                                                                                  sampling_error = sqrt(sum((percent_questions_answered - sampling_mean)^2)/(n() - 1)) ) %>% 
   
   ggplot() + aes(x=questions, y = sampling_mean, color = group) + facet_grid(group ~ .)  +geom_errorbar( aes(ymin=sampling_mean - sampling_error, 
-                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(size = 1)
+                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(size = 1) + ggtitle("Percentage of students who answered the question right")
 
 
 ```
@@ -230,9 +230,9 @@ library(CDM)
 total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
   
   #browser()
-  df.t <- df[i,]
   #df.t <- df.data
- 
+  df.t <- df[i,]
+  
   df.t.mastery <- df.t %>% filter(mastery == "Mastery") %>% select(E1:E28)
   df.t.ave <- df.t %>% filter(mastery == "Average") %>% select(E1:E28)
   df.t.non_mastery <- df.t %>% filter(mastery == "Non-Mastery") %>% select(E1:E28)
@@ -271,9 +271,9 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
     
 } 
 
-t <- total_cdm_fn(df.data)
+t_cdm <- total_cdm_fn(df.data)
 
-t 
+t_cdm 
 ```
 
 ```{r}
@@ -284,6 +284,9 @@ plot(X.bt)
 ```
 
 ```{r}
+
+
+#unique(df.data$mastery_n)
 
 df.m_slip <- X.bt$t[,1:28] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Mastery")
 df.m_guess <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Mastery")
@@ -298,7 +301,8 @@ df.nm_guess <- X.bt$t[,141:168] %>% as_tibble() %>% mutate(parameter = "Guess", 
 
 df.data.sim <- df.m_slip %>% bind_rows(df.m_guess) %>% 
   bind_rows(df.ave_slip) %>% bind_rows(df.ave_guess) %>% 
-  bind_rows(df.nm_slip) %>% bind_rows(df.nm_guess)
+  bind_rows(df.nm_slip) %>% bind_rows(df.nm_guess)  #%>%
+  #mutate(group = factor(group, levels = c("Mastery(954)", "Average(700)", "Non-Mastery(1268)"), ordered = TRUE))
 
 df.data.sim
 
@@ -323,3 +327,60 @@ df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) 
 
 
 ```
+
+
+
+
+```{r}
+
+df.t  %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
+  
+  ggplot() + aes(x=questions, y = sampling_mean, color = group) + facet_grid(parameter ~ questions, scales = "free"  )  + geom_errorbar(position=position_dodge(width=0.5), aes(ymin=sampling_mean - sampling_error, 
+                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(position=position_dodge(width=0.5), size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples") + theme(axis.text.x = element_text() , strip.background.x = element_rect(fill = "white"), axis.ticks.x = element_blank()) + labs(x="Questions / Items", y = "Sampling Mean with Sampling error") + scale_color_brewer(palette="Dark2")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
