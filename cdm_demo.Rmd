@@ -70,21 +70,28 @@ ggplot(df.t) + aes(x=percentage, fill = mastery) + geom_density(alpha = 0.4) +
 Below graph shows that none of the questions have been completely answered by students.
 ```{r}
 df.t <- df.data %>% select(id, E1:E28) %>% gather(key="question", value = "answered", -id, factor_key = TRUE) %>% group_by(question) %>% summarise(total_answered = sum(answered), total_students = dim(X)[1], percent = total_answered/total_students, type=ifelse(percent < 0.5, "Difficult Question", "Normal Question"))
-df.t
 
-ggplot(df.t) + aes(x=question, y=total_answered, fill = type) + geom_col(alpha = 0.6) + geom_hline(aes(yintercept = dim(X)[1], color = "Total Students"))  + 
+df.t <- df.t %>% mutate(question = str_replace(question, "E","Q"))
+
+col_names = df.t$question
+
+
+
+df.t %>% mutate(question=factor(question, levels = col_names, ordered = TRUE)) %>%
+
+ggplot() + aes(x=question, y=total_answered, fill = type) + geom_col(alpha = 0.6) + geom_hline(aes(yintercept = dim(X)[1], color = "Total Students"))  + 
   geom_hline(aes(yintercept = min(df.t$total_answered), color = " Least Answered Question"))  + 
-  geom_hline(aes(yintercept = max(df.t$total_answered), color = " Most Answered Question"))  + theme_pubclean() + labs(color = "", fill="") 
+  geom_hline(aes(yintercept = max(df.t$total_answered), color = " Most Answered Question"))  + labs(color = "", fill="") # + theme_pubclean()
 ```
 
 ## By Grades
 ```{r}
 
-df.t <- df.data %>% select(id, grades, E1:E28) %>% gather(key="question", value = "answered", -id, -grades, factor_key = TRUE) %>% group_by(question, grades) %>% summarise(total_answered = sum(answered), total_students = n(), percent = total_answered/total_students, type=ifelse(percent < 0.5, "Difficult Question", "Normal Question"))
-df.t
+df.t <- df.data %>% select(id, grades, E1:E28) %>% gather(key="question", value = "answered", -id, -grades, factor_key = TRUE) %>% group_by(question, grades) %>% summarise(total_answered = sum(answered), total_students = n(), percent = total_answered/total_students, type=ifelse(percent < 0.5, "Difficult Question", "Normal Question"))  %>% ungroup()
 
+df.t %>% mutate(question = factor(str_replace(question, "E","Q"), levels = col_names, ordered = TRUE)) %>%
 
-ggplot(df.t) + aes(x=question, y=percent, fill = type) + geom_col(alpha = 0.6, position = position_stack() ) + theme_pubclean() + facet_grid(grades~.) + labs(y = "Percentage", title = "Percentage of students in a particular grade answering a particular Item")+ theme_pubclean() + labs(color = "", fill="")
+ggplot() + aes(x=question, y=percent, fill = type) + geom_col(alpha = 0.6, position = position_stack() ) + theme_pubclean() + facet_grid(grades~.) + labs(y = "Percentage", title = "Percentage of students in a particular grade answering a particular Item")+ theme_pubclean() + labs(color = "", fill="")
 
 #ggplot(df.t) + aes(x=question, y=percent, fill = grades) + geom_col(alpha = 0.6, position = position_stack() ) + theme_pubclean() + facet_grid(grades~type) + labs(y = "Percentage", title = "Percentage of students in a particular grade answering a particular Item")
 ```
