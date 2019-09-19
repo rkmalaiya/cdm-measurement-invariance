@@ -237,12 +237,12 @@ library(CDM)
 total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
   
   #browser()
-  #df.t <- df.data
+  df.t <- df.data
   df.t <- df[i,]
   
-  df.t.mastery <- df.t %>% filter(mastery == "Mastery") %>% select(E1:E28)
-  df.t.ave <- df.t %>% filter(mastery == "Average") %>% select(E1:E28)
-  df.t.non_mastery <- df.t %>% filter(mastery == "Non-Mastery") %>% select(E1:E28)
+  df.t.mastery <- df.t %>% filter(str_detect(mastery,"^Mastery(.)")) %>% select(E1:E28)
+  df.t.ave <- df.t %>% filter(str_detect(mastery, "^Average(.)")) %>% select(E1:E28)
+  df.t.non_mastery <- df.t %>% filter(str_detect(mastery,"^Non-Mastery(.)")) %>% select(E1:E28)
  
   ###########################
   
@@ -285,7 +285,7 @@ t_cdm
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 1000, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 1000, stype = "i", parallel = c("multicore"))
 
 plot(X.bt)
 ```
@@ -295,16 +295,18 @@ plot(X.bt)
 
 #unique(df.data$mastery_n)
 
-df.m_slip <- X.bt$t[,1:28] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Mastery")
-df.m_guess <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Mastery")
 
 
-df.ave_slip <- X.bt$t[,57:84] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Average")
-df.ave_guess <- X.bt$t[,85:112] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Average")
+df.m_slip <- X.bt$t[,1:28] %>%  as_tibble() %>% mutate(parameter = "Slip", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Mastery.")])
+df.m_guess <- X.bt$t[,29:56] %>% as_tibble() %>% mutate(parameter = "Guess", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Mastery.")])
 
 
-df.nm_slip <- X.bt$t[,113:140] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Non-Mastery")
-df.nm_guess <- X.bt$t[,141:168] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Non-Mastery")
+df.ave_slip <- X.bt$t[,57:84] %>%  as_tibble() %>% mutate(parameter = "Slip", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Average.")])
+df.ave_guess <- X.bt$t[,85:112] %>% as_tibble() %>% mutate(parameter = "Guess", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Average.")])
+
+
+df.nm_slip <- X.bt$t[,113:140] %>%  as_tibble() %>% mutate(parameter = "Slip", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Non-Mastery.")])
+df.nm_guess <- X.bt$t[,141:168] %>% as_tibble() %>% mutate(parameter = "Guess", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Non-Mastery.")])
 
 df.data.sim <- df.m_slip %>% bind_rows(df.m_guess) %>% 
   bind_rows(df.ave_slip) %>% bind_rows(df.ave_guess) %>% 
@@ -329,7 +331,7 @@ df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) 
 df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
                                                                                                                                                                                                                                  sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
   
-  ggplot() + aes(x=questions, y = sampling_mean, color = parameter) + facet_grid(group ~ .  )  +geom_errorbar( aes(ymin=sampling_mean - sampling_error, 
+  ggplot() + aes(x=questions, y = sampling_mean, color = parameter) + facet_grid(group ~ .  )  +geom_pointrange( aes(ymin=sampling_mean - sampling_error, 
                                                                                                                           ymax=sampling_mean + sampling_error), width=.2) + geom_point(size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples")
 
 
@@ -343,8 +345,11 @@ df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) 
 df.t  %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
                                                                                                                                                                                                                                  sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
   
-  ggplot() + aes(x=questions, y = sampling_mean, color = group) + facet_grid(parameter ~ questions, scales = "free"  )  + geom_errorbar(position=position_dodge(width=0.5), aes(ymin=sampling_mean - sampling_error, 
-                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(position=position_dodge(width=0.5), size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples") + theme(axis.text.x = element_text() , strip.background.x = element_rect(fill = "white"), axis.ticks.x = element_blank()) + labs(x="Questions / Items", y = "Sampling Mean with Sampling error") + scale_color_brewer(palette="Dark2")
+  ggplot() + aes(x=questions, y = sampling_mean, color = group) + facet_grid(parameter ~ questions, scales = "free_x"  )  +
+  
+  geom_pointrange(position=position_dodge(width=0.5), aes(ymin=sampling_mean - sampling_error, ymax=sampling_mean + sampling_error), width=.2) +
+  
+  geom_point(position=position_dodge(width=0.5), size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples") + theme(axis.text.x = element_text() , strip.background.x = element_rect(fill = "white"), axis.ticks.x = element_blank()) + labs(x="Questions / Items", y = "Sampling Mean with Sampling error") + scale_color_brewer(palette="Dark2")
 
 
 ```
@@ -356,7 +361,31 @@ df.t  %>% gather(key = "questions", value="item_parameters", -group, -parameter)
 
 
 
+# Plotting without error bars
 
+
+```{r}
+
+df.t %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
+  
+  ggplot() + aes(x=questions, y = sampling_mean, color = parameter) + facet_grid(group ~ .  )  + geom_point(size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples")
+
+
+```
+
+
+
+
+```{r}
+
+df.t  %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% group_by(group, parameter, questions) %>% summarise( sampling_mean = mean(item_parameters), 
+                                                                                                                                                                                                                                 sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
+  
+  ggplot() + aes(x=questions, y = sampling_mean, color = group) + facet_grid(parameter ~ questions, scales = "free"  ) + geom_point(position=position_dodge(width=0.5), size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples") + theme(axis.text.x = element_text() , strip.background.x = element_rect(fill = "white"), axis.ticks.x = element_blank()) + labs(x="Questions / Items", y = "Sampling Mean with Sampling error") + scale_color_brewer(palette="Dark2")
+
+
+```
 
 
 
