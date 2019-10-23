@@ -232,7 +232,7 @@ t_cdm
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 10, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 1000, stype = "i")
 
 plot(X.bt)
 ```
