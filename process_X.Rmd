@@ -1,0 +1,334 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+library(dummy)
+library(stringi)
+library(stringr)
+
+
+```
+
+
+```{r}
+
+rm(list = ls())
+
+x_pre <- read_csv("data\\OUTPUT.csv")
+
+glimpse(x_pre)
+
+```
+
+
+```{r}
+
+head(x_pre)
+
+```
+
+```{r}
+
+x.gather <-x_pre %>% gather(key = "key", value = "value", -File, -SubjectID)
+x.gather 
+```
+
+
+
+```{r}
+x.questions <- 
+  
+  x.gather %>% filter(str_detect(key, "Question")) 
+
+x.questions.dist <- x.questions %>% distinct(value) %>% drop_na() %>%  mutate(Q_UNIQUE_ID = row_number())
+
+x.questions.dist 
+
+```
+
+```{r}
+
+x.answers <- 
+  
+  x.gather %>% filter(!str_detect(key, "Question"))
+
+x.answers
+```
+
+
+```{r}
+x.questions %>% distinct(key)
+```
+
+
+```{r}
+x.answers %>% distinct(key)
+```
+
+
+```{r}
+
+x.questions.id <- x.questions %>% inner_join(x.questions.dist) %>% mutate(Q_UNIQUE_ID  = factor(Q_UNIQUE_ID)) 
+
+x.questions.id
+```
+
+
+```{r}
+#x.questions.id %>% mutate(var = 1) %>% select(-key)  %>% spread(key = "Q_UNIQUE_ID", value = "var")
+```
+
+
+```{r}
+
+x.questions.id[c(2596, 9789),] 
+
+```
+
+
+
+```{r}
+
+x.questions.id[c(1330, 3101),] 
+
+```
+
+
+
+```{r}
+
+x.questions.id[c(8679, 11543),] 
+
+```
+
+```{r}
+
+x.questions.id[c(1871, 6917),] 
+
+```
+
+```{r}
+
+x.questions.id[c(1458, 5003),] 
+
+```
+
+```{r}
+x.questions.id[c(3221, 6926),] 
+```
+
+```{r}
+
+x.questions.id.filterd <- x.questions.id %>% anti_join(x.questions.id %>% group_by(File, SubjectID, value) %>% summarise(cnt = n(), question_number = paste(key, collapse = ",")) %>% filter(cnt > 1) %>% ungroup(), by = "value")
+
+
+x.questions.id.filterd
+
+```
+
+
+We have the correct Questions. Now we need to add marks of answers against the questions.
+```{r}
+
+X.pre <- x.questions.id.filterd %>% mutate(id = str_split(key, " ", simplify = TRUE)[,2]) %>% 
+  inner_join(
+    
+    x.answers %>% mutate(id = str_split(key, " ", simplify = TRUE)[,3]), by = c("File", "SubjectID", "id")
+    
+    ) %>% mutate(value.y = as.integer(value.y))
+
+write_csv(X.pre, "X_Pre.csv")
+X.pre
+```
+
+```{r}
+
+
+X<- X.pre %>% select(-key.x, -key.y, -value.x, -id ) %>% spread(key = "Q_UNIQUE_ID", value = "value.y")
+
+write_csv(X, "X.csv")
+X
+```
+
+Let's run some test to verify X
+```{r}
+
+X %>% select(-File, -SubjectID) %>% summarise_all(sum, na.rm = TRUE)
+
+```
+
+```{r}
+
+X %>% gather(key = "QuestionID", value = "Score", -File, -SubjectID)
+
+```
+
+```{r}
+
+X %>% gather(key = "QuestionID", value = "Score", -File, -SubjectID) %>% filter(File == "Exam1Trial1") %>% mutate(Score = fct_explicit_na(as.character(Score))) %>% group_by(SubjectID, Score) %>% tally() %>%
+  
+  ggplot() + 
+  aes(x=SubjectID, y=n, fill = Score) + 
+  geom_col(position = position_dodge2()) + facet_wrap(Score~., scales = "free")
+  
+
+```
+
+```{r}
+
+X %>% gather(key = "QuestionID", value = "Score", -File, -SubjectID) %>% filter(File == "Exam1Trial1") %>% mutate(Score = fct_explicit_na(as.character(Score))) %>% filter(Score != "(Missing)") %>% group_by(SubjectID, Score) %>% tally() %>%
+  
+  ggplot() + 
+  aes(x=SubjectID, y=n, fill = Score) + 
+  geom_col(position = position_stack())
+  
+
+```
+
+# How many times a question is asked
+```{r}
+
+X %>% gather(key = "QuestionID", value = "Score", -File, -SubjectID) %>% filter(File == "Exam1Trial1") %>% mutate(Score = fct_explicit_na(as.character(Score))) %>% filter(Score != "(Missing)") %>% group_by(QuestionID, Score) %>% tally() %>% filter(n > 4) %>%
+  
+  ggplot() + 
+  aes(x=QuestionID, y=n, fill = Score) + 
+  geom_col(position = position_stack()) + 
+  stat_mean() + facet_wrap(Score~.) + coord_flip()
+  
+
+```
+
+```{r}
+
+X %>% gather(key = "QuestionID", value = "Score", -File, -SubjectID) %>% filter(File == "Exam1Trial1") %>% mutate(Score = fct_explicit_na(as.character(Score))) %>% group_by(SubjectID, Score) %>% tally() %>% filter(n > 4) %>% ungroup() %>%
+  
+  ggplot() + 
+  aes(x=SubjectID, y=n, fill = Score) + 
+  geom_col(position = position_stack()) + 
+  stat_summary(fun.y = min, geom = "line") + 
+  stat_mean() + facet_grid(Score~., scales = "free") 
+  
+
+```
+
+# Filter questions asked in Exam I
+
+```{r}
+
+library(janitor)
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols")
+
+```
+
+#Quantify Sparsity
+```{r}
+
+
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% 
+  group_by(File, SubjectID) %>%
+  summarise(total_na = sum(is.na(Scores)), total = n(), total_attempted = total - total_na) %>% 
+  
+  ggplot() + aes(x=SubjectID, y = total_attempted) + geom_col() + geom_hline(aes(yintercept = min(total_attempted))) + geom_hline(aes(yintercept = max(total_attempted)))
+
+
+```
+
+#Question attempts for Exam1Trial1
+
+```{r}
+
+
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% 
+  group_by(File, QuestionID) %>%
+  summarise(total_na = sum(is.na(Scores)), total = n(), total_attempted = total - total_na) %>% 
+  
+  ggplot() + aes(x=QuestionID, y = total_attempted) + geom_col() + 
+  geom_hline(aes(yintercept = min(total_attempted))) + geom_hline(aes(yintercept = max(total_attempted))) + 
+  coord_flip()
+
+
+```
+
+#Question attempts for All Trials
+
+```{r}
+
+
+X %>%  remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% 
+  group_by(File, QuestionID) %>%
+  summarise(total_na = sum(is.na(Scores)), total = n(), total_attempted = total - total_na) %>% 
+  
+  ggplot() + aes(x=QuestionID, y = total_attempted) + geom_col() + 
+  geom_hline(aes(yintercept = min(total_attempted))) + geom_hline(aes(yintercept = max(total_attempted))) + 
+   facet_grid(.~File, scales = "free")
+
+
+```
+
+# Questions with good attempt count
+```{r}
+
+
+question_attempted <- X %>% remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% 
+  group_by(File, QuestionID) %>%
+  summarise(total_na = sum(is.na(Scores)), total = n(), total_attempted = total - total_na)
+
+question_attempted <- question_attempted %>% filter(total_attempted >= 8)
+
+question_attempted
+
+#%>% filter(QuestionID == "103")
+
+```
+
+Filtering out questions with lesser attempts
+
+```{r}
+
+X_filtered <- X %>% remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% semi_join(question_attempted, by = c("File", "QuestionID")) %>% 
+  spread(key = "QuestionID", value = "Scores")
+
+X_filtered
+```
+
+
+
+# Take away questions answered less that 5 times per exam
+```{r}
+X %>% remove_empty(.,which = "cols") %>% write_csv("data\\X.csv")
+
+X_filtered %>% remove_empty(.,which = "cols") %>% write_csv("data\\X_filtered.csv")
+```
+
+Write CSVs seperate for each trial to avoid having columns for those questions that were not asked in a trial. This will help to show the true picture of sparsity. 
+```{r}
+
+df %>%
+  nest(-Rkey) %>% 
+  pwalk(function(Rkey, data) write_csv(data, file.path(temp_dir, paste0(Rkey, ".csv"))))
+
+```
+
+
+
+
+
+
+
+
+

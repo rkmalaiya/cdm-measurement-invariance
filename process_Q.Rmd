@@ -1,0 +1,32 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+library(dummy)
+library(stringi)
+library(stringr)
+
+
+```
+
+
+```{r}
+
+rm(list = ls())
+
+Q_pre <- read_csv("data/final_result_similar.csv")
+
+glimpse(Q_pre)
+
+```
+
