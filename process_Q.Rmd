@@ -30,3 +30,51 @@ glimpse(Q_pre)
 
 ```
 
+
+
+```{r}
+
+Q_pre
+
+```
+
+
+```{r}
+
+learning_obj <- Q_pre %>% distinct(`Learning Objective`) %>% mutate(lo_id = row_number())
+learning_obj
+
+```
+
+
+```{r}
+
+
+Q <- Q_pre %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
+Q
+
+```
+
+
+```{r}
+
+Q.distinct.id <- read_csv("data/Q_distinct_id.csv") 
+
+Q.distinct.id <- Q.distinct.id %>% mutate(temp = str_trim(str_replace_all(value, "_|\\.", "")))
+Q.distinct.id
+```
+
+
+
+```{r}
+
+Q %>% inner_join(Q.distinct.id, by = "temp") 
+
+```
+
+```{r}
+
+Q %>% anti_join(Q.distinct.id) %>% distinct(Question, temp) %>% select(-temp ) %>% write_csv("missing.csv")
+
+```
+

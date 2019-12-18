@@ -26,7 +26,7 @@ rm(list = ls())
 
 x_pre <- read_csv("data\\OUTPUT.csv")
 
-glimpse(x_pre)
+#glimpse(x_pre)
 
 ```
 
@@ -52,6 +52,7 @@ x.questions <-
 
 x.questions.dist <- x.questions %>% distinct(value) %>% drop_na() %>%  mutate(Q_UNIQUE_ID = row_number())
 
+x.questions.dist %>% write_csv("data\\Q_distinct_id.csv")
 x.questions.dist 
 
 ```
@@ -325,7 +326,12 @@ df %>%
 ```
 
 
+```{r}
 
+X %>% group_by(File) %>%
+  nest() 
+
+```
 
 
 
