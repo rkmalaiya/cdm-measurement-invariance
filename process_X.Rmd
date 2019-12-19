@@ -317,14 +317,6 @@ X_filtered %>% remove_empty(.,which = "cols") %>% write_csv("data\\X_filtered.cs
 ```
 
 Write CSVs seperate for each trial to avoid having columns for those questions that were not asked in a trial. This will help to show the true picture of sparsity. 
-```{r}
-
-df %>%
-  nest(-Rkey) %>% 
-  pwalk(function(Rkey, data) write_csv(data, file.path(temp_dir, paste0(Rkey, ".csv"))))
-
-```
-
 
 ```{r paged.print=FALSE}
 
@@ -334,12 +326,26 @@ fn.clean <- function (df) {
 }
 
 
-df.t <- X %>% 
+X.individual.list <- X %>% 
 nest(-File) %>% 
-  mutate(data2 = map(data, fn.clean))
+  mutate(data_clean = map(data, fn.clean))
 
-df.t
+X.individual.list
 
+
+
+```
+
+```{r }
+
+fn.write <- function(key, data) {
+  
+  print(data)
+  data %>% write_csv(paste0("data\\",key,".csv"))
+  
+}
+
+walk2(X.individual.list$File, X.individual.list$data_clean, fn.write)
 
 
 ```
