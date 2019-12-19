@@ -24,9 +24,9 @@ library(stringr)
 
 rm(list = ls())
 
-Q_pre <- read_csv("data/final_result_similar.csv")
+Q_from_book <- read_csv("data/final_result_similar.csv")
 
-glimpse(Q_pre)
+glimpse(Q_from_book)
 
 ```
 
@@ -34,14 +34,14 @@ glimpse(Q_pre)
 
 ```{r}
 
-Q_pre
+Q_from_book
 
 ```
 
 
 ```{r}
 
-learning_obj <- Q_pre %>% distinct(`Learning Objective`) %>% mutate(lo_id = row_number())
+learning_obj <- Q_from_book %>% distinct(`Learning Objective`) %>% mutate(lo_id = row_number())
 learning_obj
 
 ```
@@ -50,8 +50,8 @@ learning_obj
 ```{r}
 
 
-Q <- Q_pre %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
-Q
+Q_pre <- Q_from_book %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
+Q_pre
 
 ```
 
@@ -68,13 +68,29 @@ Q.distinct.id
 
 ```{r}
 
-Q %>% inner_join(Q.distinct.id, by = "temp") 
+Q_pre %>% inner_join(Q.distinct.id, by = "temp") 
 
 ```
 
+
 ```{r}
 
-Q %>% anti_join(Q.distinct.id) %>% distinct(Question, temp) %>% select(-temp ) %>% write_csv("missing.csv")
+Q <- Q_pre %>% inner_join(Q.distinct.id, by = "temp") %>% distinct(Q_UNIQUE_ID, lo_id) %>% arrange(Q_UNIQUE_ID) %>%
+  mutate(present = 1) %>%
+  
+  spread(key = "lo_id", value = "present")
+
+Q
+
+
+Q %>% write_csv("data\\Q.csv")
+
+```
+
+
+```{r}
+
+Q_pre %>% anti_join(Q.distinct.id) %>% distinct(Question, temp) %>% select(-temp ) %>% write_csv("missing.csv")
 
 ```
 

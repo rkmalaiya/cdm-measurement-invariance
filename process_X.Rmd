@@ -326,12 +326,58 @@ df %>%
 ```
 
 
-```{r}
+```{r paged.print=FALSE}
 
-X %>% group_by(File) %>%
-  nest() 
+fn.clean <- function (df) {
+  return(df %>% remove_empty(.,which = "cols"))
+  
+}
+
+
+df.t <- X %>% 
+nest(-File) %>% 
+  mutate(data2 = map(data, fn.clean))
+
+df.t
+
+
 
 ```
+
+
+```{r}
+
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols")
+
+```
+
+```{r}
+
+X %>% filter(File == "Exam1Trial2") %>% remove_empty(.,which = "cols")
+
+```
+
+```{r}
+
+X %>% filter(File == "Exam2Trial1") %>% remove_empty(.,which = "cols") %>%
+  gather(key="Questions", value = "Answers", -File, -SubjectID) %>% 
+  mutate(Answers = fct_explicit_na(as.character (Answers))) %>%
+  
+  ggplot() + aes(x = Questions, fill = Answers) + geom_bar(position = position_dodge2()) + facet_wrap(Answers ~. , scales = "free")
+
+```
+
+```{r}
+
+X %>% filter(File == "Exam2Trial1") %>% remove_empty(.,which = "cols") %>%
+  gather(key="Questions", value = "Answers", -File, -SubjectID) %>% 
+  mutate(Answers = fct_explicit_na(as.character (Answers))) %>%
+  
+  ggplot() + aes(x = Answers) + geom_bar(position = position_dodge2()) + facet_wrap(Answers ~. , scales = "free")
+
+```
+
+
 
 
 
