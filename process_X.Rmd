@@ -25,6 +25,7 @@ library(stringr)
 rm(list = ls())
 
 x_pre <- read_csv("data\\OUTPUT.csv")
+Q <- read_csv("data\\Q.csv")
 
 #glimpse(x_pre)
 
@@ -155,7 +156,14 @@ X.pre
 ```{r}
 
 
-X<- X.pre %>% select(-key.x, -key.y, -value.x, -id ) %>% spread(key = "Q_UNIQUE_ID", value = "value.y")
+X<- X.pre %>% select(-key.x, -key.y, -value.x, -id ) %>%
+  mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID)) %>%
+  semi_join(
+  
+  Q %>% distinct(Q_UNIQUE_ID)
+  
+) %>% spread(key = "Q_UNIQUE_ID", value = "value.y")  
+  
 
 write_csv(X, "X.csv")
 X
@@ -384,7 +392,51 @@ X %>% filter(File == "Exam2Trial1") %>% remove_empty(.,which = "cols") %>%
 ```
 
 
+# Merge with Q
 
+```{r}
+
+#Q <- read_csv("data\\Q.csv")
+
+Q
+
+```
+
+```{r  paged.print=FALSE}
+
+fn.skills <- function (df) {
+  
+  df <- df %>% remove_empty(.,which = "cols") %>%
+  gather(key = "Q_UNIQUE_ID", value = "Score", -SubjectID) %>%
+  mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID)) %>% distinct(Q_UNIQUE_ID) %>%
+  
+  inner_join(
+    Q
+    
+  ) %>% remove_empty(.,which = "cols")
+  
+  return(df)
+  
+}
+
+
+X.Q <- X.individual.list %>% 
+  mutate(data_Q_skills = map(data_clean, fn.skills))
+
+
+X.Q 
+
+#X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols") %>%
+#  gather(key = "Q_UNIQUE_ID", value = "Score", -File, -SubjectID) %>%
+#  mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID)) %>% distinct(Q_UNIQUE_ID) %>%
+#  
+#  inner_join(
+#    Q
+#    
+#  ) %>% remove_empty(.,which = "cols")
+
+
+```
 
 
 
