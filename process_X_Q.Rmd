@@ -1,0 +1,343 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+library(dummy)
+library(stringi)
+library(stringr)
+
+
+```
+
+
+```{r}
+rm(list = ls())
+
+x_pre <- read_csv("data\\OUTPUT.csv")
+
+
+```
+
+```{r}
+
+Q_from_book <- read_csv("data/final_result_similar.csv")
+glimpse(Q_from_book)
+
+```
+
+
+```{r}
+learning_obj <- Q_from_book %>% distinct(`Learning Objective`) %>% mutate(lo_id = row_number())
+Q_pre <- Q_from_book %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
+learning_obj
+```
+
+```{r}
+
+
+Q_pre <- Q_from_book %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% 
+  mutate(temp = str_trim(str_replace_all(Question, "_|\\.", ""))) %>%
+  mutate(Q_UNIQUE_ID = row_number()) 
+Q_pre
+
+```
+
+
+
+```{r}
+
+head(x_pre)
+
+```
+
+```{r}
+
+x.gather <-x_pre %>% gather(key = "key", value = "value", -File, -SubjectID)
+x.gather 
+```
+
+
+
+```{r}
+x.questions <- 
+  
+  x.gather %>% filter(str_detect(key, "Question")) %>%
+
+  anti_join(
+    x.gather %>% filter(str_detect(key, "Question")) %>% 
+      group_by(File, SubjectID, value) %>% 
+      summarise(cnt = n(), question_number = paste(key, collapse = ",")) %>% 
+      filter(cnt > 1) %>% ungroup(),
+            by = "value"
+    ) # Taking out generic questions (having same question text but different answers)
+
+
+x.questions.dist <- x.questions %>% distinct(value) %>% drop_na() %>%  
+  #mutate(Q_UNIQUE_ID = row_number()) %>% 
+  mutate(temp = str_trim(str_replace_all(value, "_|\\.", ""))) %>% 
+  
+  inner_join(
+    Q_pre, by = "temp"
+    
+    
+  )
+
+
+
+x.questions.dist %>% write_csv("data\\Q_distinct_id.csv")
+x.questions.dist
+```
+
+
+```{r}
+Q <- x.questions.dist %>% distinct(Q_UNIQUE_ID, lo_id) %>% arrange(Q_UNIQUE_ID) %>%
+  mutate(present = 1) %>%
+  
+  spread(key = "lo_id", value = "present")
+
+Q %>% write_csv("data\\Q.csv")
+Q
+
+```
+
+```{r}
+
+x.answers <- 
+  
+  x.gather %>% filter(!str_detect(key, "Question"))
+
+x.answers
+```
+
+#Total Questions presented to students
+53 Questions are randomly presented to students
+```{r}
+x.questions %>% distinct(key)
+```
+
+
+```{r}
+
+x.questions.id <- x.questions %>% inner_join(x.questions.dist) #%>% mutate(Q_UNIQUE_ID  = factor(Q_UNIQUE_ID)) 
+
+x.questions.id
+```
+
+# Filter out Generic Questions 
+Questions with same text but different Answers
+```{r}
+
+x.questions.id.filterd <- x.questions.id %>% 
+  anti_join(
+    x.questions.id %>% 
+      group_by(File, SubjectID, Question) %>% 
+      summarise(cnt = n(), question_number = paste(key, collapse = ",")) %>% 
+      filter(cnt > 1) %>% ungroup(),
+            by = "Question"
+    ) %>% select(-lo_id, -`Learning Objective`)
+
+
+x.questions.id.filterd
+
+```
+
+
+We have the correct Questions. Now we need to add marks of answers against the questions.
+```{r}
+
+X.pre <- x.questions.id %>% mutate(id = str_split(key, " ", simplify = TRUE)[,2]) %>% 
+  
+  inner_join(
+    
+    x.answers %>% mutate(id = str_split(key, " ", simplify = TRUE)[,3]), by = c("File", "SubjectID", "id")
+    
+    ) %>% 
+  mutate(value.y = as.integer(value.y)) #%>% 
+  #mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID))
+
+#write_csv(X.pre, "X_Pre.csv")
+X.pre
+```
+
+```{r}
+unique(X.pre$Q_UNIQUE_ID)
+```
+
+
+```{r}
+
+
+X<- X.pre %>% select(-key.x, -key.y, -value.x, -id, -temp, -lo_id, -`Learning Objective`, -Question ) %>% 
+  spread(key = "Q_UNIQUE_ID", value = "value.y")  
+  
+
+write_csv(X, "data/X.csv")
+X
+```
+
+Let's run some test to verify X
+```{r}
+
+X %>% select(-File, -SubjectID) %>% summarise_all(sum, na.rm = TRUE)
+
+```
+
+```{r}
+
+X %>% gather(key = "QuestionID", value = "Score", -File, -SubjectID)
+
+```
+
+# Filter questions asked in Exam I
+
+```{r}
+
+library(janitor)
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols")
+
+```
+
+
+
+
+# Questions with good attempt count
+```{r}
+
+
+question_attempted <- X %>% remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% 
+  group_by(File, QuestionID) %>%
+  summarise(total_na = sum(is.na(Scores)), total = n(), total_attempted = total - total_na)
+
+question_attempted <- question_attempted %>% filter(total_attempted >= 8)
+
+question_attempted
+
+#%>% filter(QuestionID == "103")
+
+```
+
+Filtering out questions with lesser attempts
+
+```{r}
+
+X_filtered <- X %>% remove_empty(.,which = "cols") %>% 
+  gather(key = "QuestionID", value = "Scores", -File, -SubjectID) %>% semi_join(question_attempted, by = c("File", "QuestionID")) %>% 
+  spread(key = "QuestionID", value = "Scores")
+
+X_filtered
+```
+
+
+
+# Take away questions answered less that 5 times per exam
+```{r}
+X %>% remove_empty(.,which = "cols") %>% write_csv("data\\X.csv")
+
+X_filtered %>% remove_empty(.,which = "cols") %>% write_csv("data\\X_filtered.csv")
+```
+
+Write CSVs seperate for each trial to avoid having columns for those questions that were not asked in a trial. This will help to show the true picture of sparsity. 
+
+```{r paged.print=FALSE}
+
+fn.clean <- function (df) {
+  return(df %>% remove_empty(.,which = "cols"))
+  
+}
+
+
+X.individual.list <- X %>% 
+nest(-File, .key = "X_full") %>% 
+  mutate(X = map(X_full, fn.clean), 
+         Q_full = map(X_full, function(df) return (Q)))
+
+X.individual.list
+
+
+
+```
+
+
+
+```{r}
+
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols")
+
+```
+
+# Merge with Q
+
+```{r}
+
+Q
+
+```
+
+```{r  paged.print=FALSE}
+
+fn.skills <- function (df) {
+  
+  df <- df %>% remove_empty(.,which = "cols") %>%
+  gather(key = "Q_UNIQUE_ID", value = "Score", -SubjectID) %>%
+  mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID)) %>% distinct(Q_UNIQUE_ID) %>%
+  
+  inner_join(
+    Q
+    
+  ) %>% remove_empty(.,which = "cols")
+  
+  return(df)
+  
+}
+
+
+X.Q <- X.individual.list %>% 
+  mutate(Q = map(X, fn.skills))
+
+
+X.Q 
+
+X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols") %>%
+  gather(key = "Q_UNIQUE_ID", value = "Score", -File, -SubjectID) %>%
+  mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID)) %>% distinct(Q_UNIQUE_ID) %>%
+  
+  anti_join(
+    Q, by = "Q_UNIQUE_ID"
+    
+  ) %>% remove_empty(.,which = "cols")
+
+
+```
+
+
+
+```{r }
+
+fn.write <- function(File, X_full, X, Q_full, Q) {
+
+  
+  print(X)
+  X %>% write_csv(paste0("data\\",File,"_X.csv"))
+  Q %>% write_csv(paste0("data\\",File,"_Q.csv"))
+  
+}
+
+#walk2(X.Q$File, X.Q$data_clean, X.Q$data_Q_skills, fn.write)
+
+pwalk(X.Q, fn.write)
+
+
+```
+
+
