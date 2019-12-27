@@ -23,22 +23,35 @@ library(stringr)
 ```{r}
 rm(list = ls())
 
-x_pre <- read_csv("data\\OUTPUT.csv")
+x_pre <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\OUTPUT.csv")
 
 
 ```
 
 ```{r}
 
-Q_from_book <- read_csv("data/final_result_similar.csv")
+Q_from_book <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\final_result_similar.csv") %>% mutate(`Learning Objective` = `APA Learning Objective`)
+
+
+Q_from_book <- Q_from_book %>% 
+  mutate(`Learning Objective` = str_trim(str_remove_all(`Learning Objective`, "\\."))) %>% 
+  filter(`Learning Objective` != "nan")
+  
+
 glimpse(Q_from_book)
 
 ```
 
 
 ```{r}
-learning_obj <- Q_from_book %>% distinct(`Learning Objective`) %>% mutate(lo_id = row_number())
+learning_obj <- Q_from_book %>%
+  distinct(`Learning Objective`) %>%
+  mutate(lo_id = row_number())
+
+
 Q_pre <- Q_from_book %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
+
+
 learning_obj
 ```
 
@@ -94,7 +107,7 @@ x.questions.dist <- x.questions %>% distinct(value) %>% drop_na() %>%
 
 
 
-x.questions.dist %>% write_csv("data\\Q_distinct_id.csv")
+x.questions.dist %>% write_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q_distinct_id.csv")
 x.questions.dist
 ```
 
@@ -105,7 +118,7 @@ Q <- x.questions.dist %>% distinct(Q_UNIQUE_ID, lo_id) %>% arrange(Q_UNIQUE_ID) 
   
   spread(key = "lo_id", value = "present")
 
-Q %>% write_csv("data\\Q.csv")
+Q %>% write_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv")
 Q
 
 ```
@@ -181,7 +194,7 @@ X<- X.pre %>% select(-key.x, -key.y, -value.x, -id, -temp, -lo_id, -`Learning Ob
   spread(key = "Q_UNIQUE_ID", value = "value.y")  
   
 
-write_csv(X, "data/X.csv")
+write_csv(X, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv")
 X
 ```
 
@@ -242,9 +255,9 @@ X_filtered
 
 # Take away questions answered less that 5 times per exam
 ```{r}
-X %>% remove_empty(.,which = "cols") %>% write_csv("data\\X.csv")
+X %>% remove_empty(.,which = "cols") %>% write_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv")
 
-X_filtered %>% remove_empty(.,which = "cols") %>% write_csv("data\\X_filtered.csv")
+X_filtered %>% remove_empty(.,which = "cols") %>% write_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X_filtered.csv")
 ```
 
 Write CSVs seperate for each trial to avoid having columns for those questions that were not asked in a trial. This will help to show the true picture of sparsity. 
@@ -295,7 +308,7 @@ fn.skills <- function (df) {
   inner_join(
     Q
     
-  ) %>% remove_empty(.,which = "cols")
+  ) %>% remove_empty(.,which = "cols")  %>% mutate_all(function(x) ifelse(is.na(x), 0, x))
   
   return(df)
   
@@ -308,18 +321,22 @@ X.Q <- X.individual.list %>%
 
 X.Q 
 
-X %>% filter(File == "Exam1Trial1") %>% remove_empty(.,which = "cols") %>%
+X %>% filter(File == "Exam2Trial2") %>% remove_empty(.,which = "cols") %>%
   gather(key = "Q_UNIQUE_ID", value = "Score", -File, -SubjectID) %>%
   mutate(Q_UNIQUE_ID = as.integer(Q_UNIQUE_ID)) %>% distinct(Q_UNIQUE_ID) %>%
-  
-  anti_join(
+
+  inner_join(
     Q, by = "Q_UNIQUE_ID"
     
-  ) %>% remove_empty(.,which = "cols")
+  ) %>% remove_empty(.,which = "cols") %>% mutate_all(function(x) ifelse(is.na(x), 0, x)) %>% summarise_all(sum)
 
 
 ```
 
+```{r}
+X %>% filter(File == "Exam1Trial1")
+
+```
 
 
 ```{r }
@@ -328,8 +345,8 @@ fn.write <- function(File, X_full, X, Q_full, Q) {
 
   
   print(X)
-  X %>% write_csv(paste0("data\\",File,"_X.csv"))
-  Q %>% write_csv(paste0("data\\",File,"_Q.csv"))
+  X %>% write_csv(paste0("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\",File,"_X.csv"))
+  Q %>% write_csv(paste0("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\",File,"_Q.csv"))
   
 }
 
