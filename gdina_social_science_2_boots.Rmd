@@ -18,12 +18,20 @@ library(stringr)
 ```{r}
 rm(list = ls())
 
-df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Exam1Trial1_X.csv") %>% mutate_all(as.integer)
-df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Exam1Trial1_Q.csv") %>% mutate_all(as.integer)
+df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv") %>% mutate_all(as.integer)
+df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv") %>% mutate_all(as.integer)
 
-
-X = df.X %>% select(-SubjectID) %>% rename_all(function(x) paste0("Q",x))
+X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
 Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
+
+
+X = data.ecpe$data %>% select(-id)
+Q = data.ecpe$q.matrix
+
+#Q <- data.timss11.G4.AUT.part$q.matrix1
+#X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
+#Q <- Q[,-1]
+
 
 ```
 
@@ -36,7 +44,7 @@ Q
 ```
 
 ```{r}
-n=220
+n=dim(X)[1]
 #X <- X %>% sample_n(size = n, replace = FALSE)
 ```
 
@@ -61,37 +69,44 @@ Q <- as.data.frame(Q)
 
 #model_dina <- gdina(data =  data.ecpe$data[,-1] , q.matrix =  data.ecpe$q.matrix, maxit = 10, rule = "GDINA2")
 
-model_dina <- din(data = X, q.matrix =  Q, maxit = 10)
+model_dina <- gdina(data = X, q.matrix =  Q, maxit = 10, rule = "GDINA1")
 
 ```
 
+```{r}
+df.t <- model_dina$coef %>% select(item, partype, est) %>% spread(key = partype, value = est) %>% rename("Intercept"=`0`, "Slope" = `1`)
+df.t %>% select(item, Intercept) %>% mutate(item = paste0("Intercept_",item)) %>% spread(key=item, value = Intercept)
+```
 
 
 # Calculate item parameters
 
 ```{r}
 
-total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
+total_gdina_fn <- function(df, i = 1:dim(df)[1]) {
   
+  #print(i)
   #browser()
   #df.t <- X
+  
+  
+  
   df.t <- df[i,]
   
   df.t.s1 <- df.t #%>% select(E1:E28) 
 
   ###########################
   
-  df.cdm <- CDM::din(df.t.s1, Q, progress=FALSE)
+  df.gdina <- CDM::gdina(df.t.s1, Q, progress=FALSE, maxit = 100, rule = "GDINA1")
  
   
-   df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1))) %>% 
-     spread(key = "key", value = "value") %>% 
-     select(!!!paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1)))
+   df.t <- model_dina$coef %>% 
+     select(item, partype, est) %>% 
+     spread(key = partype, value = est) %>% rename("Intercept"=`0`, "Slope" = `1`)
  
-  
-  df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1))) %>% 
-    spread(key = "key", value = "value") %>% 
-    select(!!!paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1)))
+  df.t1 <- df.t %>% select(item, Intercept) %>% mutate(item = paste0("Intercept_",item)) %>% spread(key=item, value = Intercept)
+   
+  df.t2 <- df.t %>% select(item, Slope) %>% mutate(item = paste0("Slope_",item)) %>% spread(key=item, value = Slope)
   
   
   df.t <- cbind(df.t1, df.t2)
@@ -100,20 +115,21 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
     
 } 
 
-t_cdm <- total_cdm_fn(X)
+t_cdm <- total_gdina_fn(X)
 
-t_cdm 
+t_cdm
+
 ```
 
 ```{r}
 X.p1 <- X %>% sample_frac(size = 0.5)
 X.p2 <- X %>% anti_join(X.p1)
 
-X.bt.1 <- boot(data = X , statistic = total_cdm_fn, R = 10, stype = "i")
-X.bt.2 <- boot(data = X , statistic = total_cdm_fn, R = 10, stype = "i")
+X.bt.1 <- boot(data = X , statistic = total_gdina_fn, R = 10, stype = "i")
+X.bt.2 <- boot(data = X , statistic = total_gdina_fn, R = 10, stype = "i")
 
 
-plot(X.bt.1)
+X.bt.1$t[,2]
 ```
 
 ```{r}
@@ -149,7 +165,9 @@ df.plot %>% gather(key = "questions", value="item_parameters", -group, -paramete
     levels = col_names, 
     ordered = TRUE)) %>% 
   group_by(group, parameter, questions) %>% 
-  summarise( sampling_mean = mean(item_parameters), sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) )
+  summarise( sampling_mean = mean(item_parameters), 
+             sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)),
+             sampling_variance = sum((item_parameters - sampling_mean)^2)/(n() - 1))
 
 ```
 
@@ -157,9 +175,13 @@ df.plot %>% gather(key = "questions", value="item_parameters", -group, -paramete
 ```{r}
 df.plot <- df.plot %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% 
   mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% 
+  
   group_by(group, parameter, questions) %>% 
+  
   summarise( sampling_mean = mean(item_parameters), 
-             sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)) ) %>% 
+             sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)),
+             sampling_variance = sum((item_parameters - sampling_mean)^2)/(n() - 1)
+             ) %>% 
   ungroup() 
 ```
 
@@ -206,7 +228,7 @@ df.data.sim %>% group_by(group) %>% mutate(id=1:n()) %>% ungroup() %>%
   mutate(id = paste(id,key)) %>% select(-key) %>% arrange(id, group, parameter) %>% 
   spread(key= "group", value = "value") %>% separate(id,c("id","question"), " " ) %>% select(-id)  %>%
   
-  ggplot() + aes(x = `Partition 1`, y = `Partition 2`, color = question) + geom_point() + facet_wrap(.~parameter, scales = "free")
+  ggplot() + aes(x = `Partition 1`, y = `Partition 2`, color = question) + geom_point(show.legend = FALSE) + facet_wrap(.~parameter, scales = "free")
 
 
 
@@ -216,9 +238,9 @@ df.data.sim %>% group_by(group) %>% mutate(id=1:n()) %>% ungroup() %>%
 
 df.data.sim %>% group_by(group) %>% mutate(id=1:n()) %>% ungroup() %>% 
   gather(key = "key", value = "value", -parameter, -group, -id) %>% 
-  arrange(id, group, parameter) %>%
+  arrange(id, group, parameter) %>% filter(parameter == "Guess") %>%
   
-  ggplot() + aes(x = key, y = value, fill = group) + geom_boxplot() + facet_wrap(.~parameter, scales = "free")
+  ggplot() + aes(x = key, y = value, fill = group) + geom_boxplot() + facet_wrap(.~parameter, scales = "free") + coord_flip()
 
 
 

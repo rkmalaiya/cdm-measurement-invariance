@@ -118,7 +118,9 @@ Q <- x.questions.dist %>% distinct(Q_UNIQUE_ID, lo_id) %>% arrange(Q_UNIQUE_ID) 
   
   spread(key = "lo_id", value = "present")
 
-Q %>% write_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv")
+Q %>% 
+  mutate_all(function(x) ifelse(is.na(x), 0, x)) %>%  
+  write_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv")
 Q
 
 ```

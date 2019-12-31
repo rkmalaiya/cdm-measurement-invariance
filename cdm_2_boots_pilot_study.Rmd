@@ -1,0 +1,261 @@
+---
+title: "CDM Demo"
+output: html_notebook
+---
+
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+library(stringi)
+library(stringr)
+```
+
+# Read Data
+```{r}
+rm(list = ls())
+
+df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv") %>% mutate_all(as.integer)
+df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv") %>% mutate_all(as.integer)
+
+
+X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
+Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
+
+
+X = data.ecpe$data %>% select(-id)
+Q = data.ecpe$q.matrix
+
+#Q <- data.timss11.G4.AUT.part$q.matrix1
+#X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
+#Q <- Q[,-1]
+
+
+```
+
+```{r paged.print=FALSE}
+X
+```
+
+```{r paged.print=FALSE}
+Q
+```
+
+```{r}
+n=dim(X)[1]
+#X <- X %>% sample_n(size = n, replace = FALSE)
+```
+
+# Student Performance
+
+
+# Bootstrap Sample 
+
+Boot requires a custom function that would return row wise stats. In case of dataframe, each row is considered as a multi-variate observation. First parameter of the custom function takes the data input and second parameter takes the importance of data given current bootstrap iteration. stype defines second parameter.
+
+
+
+```{r}
+
+
+
+X <- as.data.frame(X) 
+Q <- as.data.frame(Q) 
+
+
+
+
+#model_dina <- gdina(data =  data.ecpe$data[,-1] , q.matrix =  data.ecpe$q.matrix, maxit = 10, rule = "GDINA2")
+
+model_dina <- din(data = X, q.matrix =  Q, progress = FALSE)
+
+```
+
+
+
+# Calculate item parameters
+
+```{r}
+
+total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
+  
+  #print(dim(df))
+  #browser()
+  #df.t <- X
+  df.t <- df[i,]
+  
+  df.t.s1 <- df.t #%>% select(E1:E28) 
+
+  ###########################
+  
+  df.cdm <- CDM::din(df.t.s1, Q, progress=FALSE)
+ 
+  
+   df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1))) %>% 
+     spread(key = "key", value = "value") %>% 
+     select(!!!paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1)))
+ 
+  
+  df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1))) %>% 
+    spread(key = "key", value = "value") %>% 
+    select(!!!paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1)))
+  
+  
+  df.t <- cbind(df.t1, df.t2)
+  
+ return(as.matrix(df.t))
+    
+} 
+
+t_cdm <- total_cdm_fn(X)
+
+t_cdm[,1]
+```
+
+```{r}
+# Need to repeat this block with difference student size in X. 
+X.p1 <- X %>% sample_frac(size = 0.5)
+X.p2 <- X %>% anti_join(X.p1)
+
+print("Starting Boot 1")
+X.bt.1 <- boot(data = X , statistic = total_cdm_fn, R = 10, stype = "i")
+
+print("Starting Boot 2")
+X.bt.2 <- boot(data = X , statistic = total_cdm_fn, R = 10, stype = "i")
+
+size = dim(X)[2]
+
+df.s1_slip <- X.bt.1$t[,1:size] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Partition 1")
+df.s1_guess <- X.bt.1$t[,(size+1):56] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 1")
+
+
+df.s2_slip <- X.bt.2$t[,1:size] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Partition 2")
+df.s2_guess <- X.bt.2$t[,(size+1):56] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 2")
+
+
+df.data.sim <- df.s1_slip %>% bind_rows(df.s1_guess) %>% bind_rows(df.s2_slip) %>% bind_rows(df.s2_guess) 
+
+
+df.data.agg <- df.data.sim %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% 
+  
+  mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% 
+  
+  group_by(group, parameter, questions) %>% 
+  summarise( sampling_mean = mean(item_parameters), 
+             sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
+             sampling_variance = sum((item_parameters - sampling_mean)^2)/(n() - 1)
+             ) %>% 
+  
+  group_by(group, parameter) %>% 
+  summarise(sampling_error_mean = sum(sampling_variance)/n()-1) %>%
+  
+  ungroup()
+```
+
+
+```{r}
+X.bt.1$t[,1]
+```
+
+```{r}
+df.data.sim
+```
+
+```{r}
+df.data.agg
+```
+
+```{r}
+df.plot <- df.data.sim
+col_names <- colnames(df.data.sim %>% select(-group)) %>% str_replace("V","Q")
+colnames(df.data.sim) <- colnames(df.data.sim) %>% str_replace("V","Q")
+
+# For viewing purposes only
+df.plot %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% 
+  mutate(questions = factor(
+    str_replace(questions, "V","Q"), 
+    levels = col_names, 
+    ordered = TRUE)) %>% 
+  group_by(group, parameter, questions) %>% 
+  summarise( sampling_mean = mean(item_parameters), 
+             sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
+             sampling_variance = sum((item_parameters - sampling_mean)^2)/(n() - 1)
+             ) %>% 
+  group_by(group, parameter) %>% 
+  mutate(sampling_error_mean = sum(sampling_variance)/n()-1) %>%
+  ungroup()
+
+```
+
+
+```{r}
+df.plot <- df.plot %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% 
+  
+  mutate(questions = factor(str_replace(questions, "V","Q"), levels = col_names, ordered = TRUE)) %>% 
+  
+  group_by(group, parameter, questions) %>% 
+  summarise( sampling_mean = mean(item_parameters), 
+             sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
+             sampling_variance = sum((item_parameters - sampling_mean)^2)/(n() - 1)
+             ) %>% 
+  
+  group_by(group, parameter) %>% 
+  mutate(sampling_error_mean = sum(sampling_variance)/n()-1) %>%
+  
+  ungroup()
+```
+
+
+```{r}
+
+df.plot %>%
+  
+  ggplot() + aes(x=questions, y = sampling_mean, color = parameter) + facet_grid(group ~ .  )  +geom_pointrange( aes(ymin=sampling_mean - sampling_error, 
+                                                                                                                          ymax=sampling_mean + sampling_error), width=.2) + geom_point(size = 1) + theme(strip.text.y = element_text(angle = 0)) + ggtitle("Item Parameters estimated over 1000 Bootstrap samples")
+
+
+```
+
+
+
+
+
+
+```{r}
+
+df.plot %>% select(-sampling_error) %>% spread(key = group, value = "sampling_mean") %>%
+  
+  ggplot() + aes(x=`Partition 1`, y = `Partition 2`) + geom_text(aes(label = questions)) + geom_abline(aes(intercept = 0, slope = 1)) + facet_wrap(parameter~., scales = "free") + ggtitle(paste("Student sample size is", n/2, "for each partition"))
+
+```
+
+```{r}
+
+df.data.sim %>% group_by(group) %>% mutate(id=1:n()) %>% ungroup() %>% 
+  gather(key = "key", value = "value", -parameter, -group, -id) %>% 
+  mutate(id = paste(id,key)) %>% select(-key) %>% arrange(id, group, parameter) %>% 
+  spread(key= "group", value = "value") %>% separate(id,c("id","question"), " " ) %>% select(-id)  %>%
+  
+  ggplot() + aes(x = `Partition 1`, y = `Partition 2`, color = question) + geom_point(show.legend = FALSE) + facet_wrap(.~parameter, scales = "free")
+
+
+
+```
+
+```{r}
+
+df.data.sim %>% group_by(group) %>% mutate(id=1:n()) %>% ungroup() %>% 
+  gather(key = "key", value = "value", -parameter, -group, -id) %>% 
+  arrange(id, group, parameter) %>% filter(parameter == "Guess") %>%
+  
+  ggplot() + aes(x = key, y = value, fill = group) + geom_boxplot() + facet_wrap(.~parameter, scales = "free") + coord_flip()
+
+
+
+```
+
+
+
