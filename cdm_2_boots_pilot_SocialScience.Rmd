@@ -1,5 +1,5 @@
 ---
-title: "CDM Pilot Study for ECPE"
+title: "CDM Pilot Study for Social Science"
 output: html_notebook
 ---
 
@@ -25,13 +25,13 @@ df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Da
 df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv") %>% mutate_all(as.integer)
 
 
-#X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
-#Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
-#X <- as.data.frame(X) 
-#Q <- as.data.frame(Q) 
+X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
+Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
+X <- as.data.frame(X) 
+Q <- as.data.frame(Q) 
 
-X = data.ecpe$data %>% select(-id)
-Q = data.ecpe$q.matrix
+#X = data.ecpe$data %>% select(-id)
+#Q = data.ecpe$q.matrix
 
 #Q <- data.timss11.G4.AUT.part$q.matrix1
 #X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
@@ -110,7 +110,8 @@ t_cdm[1,]
 
 ```{r}
 
-df.t <- get_sample_sizes(dim(X.p1)[1], dim(X.p1)[2])
+#df.t <- get_sample_sizes(dim(X.p1)[1], dim(X.p1)[2])
+df.t <- get_sample_sizes(dim(X.p1)[1] , dim(X.p1)[2]) #+ dim(X.p2)[1]
 
 student_question_ratios <- df.t[[1]]
 sample_sizes <- df.t[[2]]
@@ -149,16 +150,14 @@ for(i in 2:length(sample_sizes)) {
 ```
 
 ```{r}
-write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
 
-write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
-```
+write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_socialscience.rds")
 
+write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_socialscience.rds")
 
-```{r}
-df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
+df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_socialscience.rds")
 
-df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
+df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_socialscience.rds")
 
 
 ```
@@ -239,7 +238,6 @@ df.error.plot %>%
 
 ```
 
-
 ```{r}
 
 df.error.plot %>%
@@ -255,8 +253,6 @@ df.error.plot %>%
 
 ```
 
-
-
 ```{r}
 
 df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, ratio) %>% 
@@ -271,6 +267,7 @@ df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, rati
   ggtitle("Sampling Error of Each Item")
 
 ```
+
 
 ```{r}
 
@@ -288,5 +285,3 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
   ggtitle("Sampling Error of Each Item")
 
 ```
-
-

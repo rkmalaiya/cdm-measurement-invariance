@@ -1,5 +1,5 @@
 ---
-title: "CDM Pilot Study for ECPE"
+title: "CDM Pilot Study for TIMSS"
 output: html_notebook
 ---
 
@@ -30,12 +30,12 @@ df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Da
 #X <- as.data.frame(X) 
 #Q <- as.data.frame(Q) 
 
-X = data.ecpe$data %>% select(-id)
-Q = data.ecpe$q.matrix
+#X = data.ecpe$data %>% select(-id)
+#Q = data.ecpe$q.matrix
 
-#Q <- data.timss11.G4.AUT.part$q.matrix1
-#X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
-#Q <- Q[,-1]
+Q <- data.timss11.G4.AUT.part$q.matrix1
+X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
+Q <- Q[,-1]
 
 
 ```
@@ -149,16 +149,16 @@ for(i in 2:length(sample_sizes)) {
 ```
 
 ```{r}
-write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
+write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_timss.rds")
 
-write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
+write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_timss.rds")
 ```
 
 
 ```{r}
-df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
+df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_timss.rds")
 
-df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
+df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_timss.rds")
 
 
 ```
@@ -272,6 +272,7 @@ df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, rati
 
 ```
 
+
 ```{r}
 
 df.error.plot %>% select(parameter, group, questions, sampling_error, sample_size, ratio) %>% 
@@ -288,5 +289,3 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
   ggtitle("Sampling Error of Each Item")
 
 ```
-
-
