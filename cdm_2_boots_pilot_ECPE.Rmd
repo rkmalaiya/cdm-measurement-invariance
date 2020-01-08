@@ -12,6 +12,7 @@ library(boot)
 library(tidyverse)
 library(stringi)
 library(stringr)
+library(ggpubr)
 ```
 
 # Read Data
@@ -53,9 +54,18 @@ Q
 #X <- X %>% sample_n(size = n, replace = FALSE)
 ```
 
+# Missing Data
 ```{r}
 percent_na <- round((sum(is.na(X)) / (dim(X)[1] * dim(X)[2])) * 100,2)
 percent_na
+```
+
+# Summary of Attempts
+
+```{r}
+
+summary(colSums(!is.na(X)))
+
 ```
 
 
@@ -99,9 +109,10 @@ X.p2 <- X %>% tail(round(dim(X)[1]/2))
 
 ```
 
+
 ```{r}
 
-t_cdm <- total_cdm_fn(X)
+t_cdm <- total_cdm_fn(X, Q_reduced = Q)
 
 t_cdm[1,]
 
@@ -115,7 +126,7 @@ df.t <- get_sample_sizes(dim(X.p1)[1], dim(X.p1)[2])
 student_question_ratios <- df.t[[1]]
 sample_sizes <- df.t[[2]]
 
-df.t <- get_mean_sample_error(X.p1, X.p2, sample_sizes[1], student_question_ratios[1],2)
+df.t <- get_mean_sample_error(X.p1, X.p2, Q, sample_sizes[1], student_question_ratios[1],2)
 
 df.error <- df.t[[1]]
 df.error.agg <- df.t[[2]]
@@ -127,7 +138,7 @@ df.error.agg <- df.t[[2]]
 
 for(i in 2:length(sample_sizes)) {
   
-  df.t <- get_mean_sample_error(X.p1, X.p2, sample_sizes[i], student_question_ratios[i],2)
+  df.t <- get_mean_sample_error(X.p1, X.p2, Q, sample_sizes[i], student_question_ratios[i],2)
   
   df.error.t <- df.t[[1]]
   df.error.agg.t <- df.t[[2]]
@@ -192,7 +203,7 @@ df.error.agg %>%
   aes(x=ratio, y=sampling_error_mean, color = group, fill = group, group = group) +
   geom_line() +
   labs(x="Student to Item Ratio") +
-  facet_wrap(parameter~.)
+  facet_wrap(parameter~.) + ggpubr::theme_pubr()
 
 ```
 
@@ -204,7 +215,8 @@ df.error %>%
   aes(x=ratio, y=sampling_error, fill = group) +
   geom_boxplot(alpha = 0.4) +
   labs(x="Student to Item Ratio") +
-  facet_wrap(parameter~.)
+  facet_wrap(parameter~.) + ggpubr::theme_pubr() + 
+  labs(fill = "")
 
 
 ```
@@ -235,7 +247,7 @@ df.error.plot %>%
   
   labs(x="Student to Item Ratio") +
   facet_grid(parameter~group) + 
-  ggtitle("Sampling Error of Each Item")
+  ggtitle("Sampling Error of Each Item") + ggpubr::theme_pubr()
 
 ```
 
@@ -245,13 +257,13 @@ df.error.plot %>%
 df.error.plot %>%
   ggplot() + 
   aes(x=ratio, y=sampling_error, fill = group) +
-  geom_point(aes(color = group),alpha = 0.2, position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.2)) +
+  geom_point(aes(color = group),alpha = 0.2, position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.29), show.legend = FALSE) +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
-  geom_point(aes(y=sampling_error_mean), size = 1) + 
+  geom_point(aes(y=sampling_error_mean), size = 1, show.legend = FALSE) + 
   
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item Ratio", color="") +
   facet_grid(parameter~.) + 
-  ggtitle("Sampling Error of Each Item")
+  ggtitle("Sampling Error of Each Item") #+ ggpubr::theme_pubclean()
 
 ```
 
@@ -283,9 +295,10 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
   aes(x=`Partition 1`, y=`Partition 2`, color = ratio) +
   geom_point() +
   
-  labs(x="Student to Item Ratio") +
+  labs() +
   facet_grid(parameter~ratio, scales = "free") + 
-  ggtitle("Sampling Error of Each Item")
+  ggtitle("Sampling Error of Each Item") + 
+  theme(axis.text.x = element_blank())
 
 ```
 

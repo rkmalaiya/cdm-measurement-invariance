@@ -1,0 +1,131 @@
+---
+title: "Plots to publish"
+output: html_notebook
+---
+
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+library(stringi)
+library(stringr)
+```
+
+```{r}
+rm(list = ls())
+options(max.print=100)
+```
+
+
+```{r}
+df.error.ec <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
+
+df.error.ec.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
+
+df.error.ec.plot <- df.error.ec %>% inner_join(
+  df.error.ec.agg
+) %>% mutate(dataset = "ECPE")
+
+df.error.ec.plot
+
+
+```
+
+
+```{r}
+df.error.ti <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_timss.rds")
+
+df.error.ti.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_timss.rds")
+
+df.error.ti.plot <- df.error.ti %>% inner_join(
+  df.error.ti.agg
+) %>% mutate(dataset = "TIMSS")
+
+df.error.ti.plot
+
+
+```
+
+```{r}
+df.error.ss <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_socialscience.rds")
+
+df.error.ss.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_socialscience.rds")
+
+df.error.ss.plot <- df.error.ss %>% inner_join(
+  df.error.ss.agg
+) %>% mutate(dataset = "Social Science")
+
+df.error.ss.plot
+
+```
+
+# Merge all Data
+
+```{r}
+
+df.error.plot <- df.error.ec.plot %>% union(df.error.ti.plot) %>% union(df.error.ss.plot) %>%
+  mutate(ratio = factor(ratio, levels = sort(unique(as.numeric(ratio))), ordered = TRUE)) %>%
+  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Science"))) %>%
+  mutate(questions = factor(questions))
+df.error.plot
+```
+
+
+```{r}
+
+df.error.plot %>% filter(parameter == "Guess") %>%
+  ggplot() + 
+  aes(x=ratio, y=sampling_error, fill = group) +
+  geom_point(aes(color = group),alpha = 0.2, position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.29), show.legend = FALSE) +
+  geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
+  geom_point(aes(y=sampling_error_mean), size = 1, show.legend = FALSE) + 
+  
+  labs(x="Student to Item Ratio", color="") +
+  facet_grid(dataset~.) + 
+  ggtitle("Sampling Error of Each Item") #+ ggpubr::theme_pubclean()
+
+```
+
+
+```{r}
+
+df.error.plot %>% #filter(parameter == "Guess") %>%
+  ggplot() + 
+  aes(x=ratio, y=sampling_error, fill = group) +
+  geom_boxplot(alpha = 0.4, show.legend = FALSE) +
+  geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
+  geom_point(aes(y=sampling_error_mean), size = 1, show.legend = FALSE) + 
+  
+  labs(x="Student to Item Ratio", color="") +
+  facet_grid(dataset~parameter) + 
+  ggtitle("Sampling Error of Each Item") + ggpubr::theme_pubclean() + 
+   theme(legend.position = "bottom") + 
+  labs(subtitle = "Item Parameters")
+
+```
+
+```{r}
+
+df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, ratio, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% #filter(parameter == "Guess") %>%
+  
+  
+  
+  ggplot() + 
+  aes(x=`Partition 1`, y=`Partition 2`, color = parameter) +
+  geom_point(show.legend = TRUE, alpha = 0.4) +
+  facet_grid(dataset~ratio, scales = "free") + 
+  ggtitle("Sampling Mean of Each Item") + 
+  scale_x_continuous(breaks = c(0,0.5)) + 
+  scale_y_continuous(breaks = c(0,0.5)) + 
+  ggpubr::theme_pubclean() + 
+  labs(color = "", subtitle = "Student to Item Ratio") + 
+  theme(legend.position = "bottom")
+
+```
+
+
+
