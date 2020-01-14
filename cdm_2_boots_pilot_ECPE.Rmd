@@ -54,7 +54,7 @@ Q
 #X <- X %>% sample_n(size = n, replace = FALSE)
 ```
 
-# Missing Data
+# Missing Data (incorrect)
 ```{r}
 percent_na <- round((sum(is.na(X)) / (dim(X)[1] * dim(X)[2])) * 100,2)
 percent_na
@@ -125,6 +125,8 @@ df.t <- get_sample_sizes(dim(X.p1)[1], dim(X.p1)[2])
 
 student_question_ratios <- df.t[[1]]
 sample_sizes <- df.t[[2]]
+
+mean(colSums(is.na(X.p1)))
 
 df.t <- get_mean_sample_error(X.p1, X.p2, Q, sample_sizes[1], student_question_ratios[1],2)
 
@@ -286,17 +288,17 @@ df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, rati
 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_error, sample_size, ratio) %>% 
+df.error.plot %>% select(parameter, group, questions, sampling_error, sample_size, avg_attempts) %>% 
   spread(key="group", value = "sampling_error") %>% arrange(sample_size) %>%
   
   
   
   ggplot() + 
-  aes(x=`Partition 1`, y=`Partition 2`, color = ratio) +
+  aes(x=`Partition 1`, y=`Partition 2`, color = avg_attempts) +
   geom_point() +
   
   labs() +
-  facet_grid(parameter~ratio, scales = "free") + 
+  facet_grid(parameter~avg_attempts, scales = "free") + 
   ggtitle("Sampling Error of Each Item") + 
   theme(axis.text.x = element_blank())
 

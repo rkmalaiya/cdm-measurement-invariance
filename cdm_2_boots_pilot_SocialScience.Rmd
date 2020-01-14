@@ -121,6 +121,8 @@ df.t <- get_sample_sizes(dim(X.p1)[1], dim(X.p1)[2])
 student_question_ratios <- df.t[[1]]
 sample_sizes <- df.t[[2]]
 
+colSums(!is.na(X.p1)) 
+
 df.t <- get_mean_sample_error(X.p1, X.p2, Q, sample_sizes[1], student_question_ratios[1],2)
 
 df.error <- df.t[[1]]
@@ -278,7 +280,7 @@ df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, rati
 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_error, sample_size, ratio) %>% 
+df.error.plot %>% select(parameter, group, questions, sampling_error, sample_size, avg_attempts) %>% 
   spread(key="group", value = "sampling_error") %>% arrange(sample_size) %>%
   
   
@@ -288,7 +290,7 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
   geom_point(show.legend = FALSE) +
   
   labs() +
-  facet_grid(parameter~ratio, scales = "free") + 
+  facet_grid(parameter~avg_attempts, scales = "free") + 
   ggtitle("Sampling Error of Each Item")
 
 ```

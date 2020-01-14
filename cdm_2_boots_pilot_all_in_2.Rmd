@@ -72,20 +72,28 @@ df.error.plot <- df.error.ec.plot %>% union(df.error.ti.plot) %>% union(df.error
   mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Science"))) %>%
   mutate(questions = factor(questions)) %>% 
   group_by(dataset, group, parameter, sample_size) %>%
-  mutate(question_n = n(), qsr = round(n()/sample_size)) %>% ungroup() %>%
+  mutate(question_n = n(), qsr = round(n()/sample_size)) %>% 
+  
+  # Average avg_attempts between partitions
+  mutate(avg_attempts = round(mean(avg_attempts))) %>%
+  
+  ungroup() %>%
   arrange(dataset, group, parameter, sample_size)
-df.error.plot <- df.error.plot %>% mutate(qsr = factor(qsr, ordered = TRUE))
-df.error.plot %>% distinct(dataset, sample_size, ratio) %>% filter(dataset != "TIMSS") %>% mutate(`Question Count` = ifelse(dataset == "ECPE", 28, 939)) %>% rename("Student Count" = "sample_size") %>% select(dataset,`Student Count`, `Question Count`, ratio)
+
+df.error.plot <- df.error.plot %>% mutate(qsr = factor(qsr, ordered = TRUE), 
+                                          sample_size = factor(sample_size, ordered = TRUE), 
+                                          avg_attempts = factor(avg_attempts, ordered = TRUE))
+df.error.plot 
 ```
 
 
-
+# Sampling Error
 
 ```{r}
 
 df.error.plot %>% #filter(parameter == "Guess") %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=avg_attempts, y=sampling_error, fill = group) +
   #geom_boxplot(alpha = 0.4, show.legend = FALSE) +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1, show.legend = FALSE) + 
@@ -103,7 +111,7 @@ df.error.plot %>% #filter(parameter == "Guess") %>%
 
 df.error.plot %>% #filter(parameter == "Guess") %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=avg_attempts, y=sampling_error, fill = group) +
   geom_boxplot(alpha = 0.4, show.legend = FALSE, color = "grey") +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1.1) + 
   geom_point(aes(y=sampling_error_mean), size = 1, show.legend = FALSE) + 
@@ -118,30 +126,30 @@ df.error.plot %>% #filter(parameter == "Guess") %>%
 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, ratio, dataset) %>% 
-  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% #filter(parameter == "Guess") %>%
+df.error.plot %>% select(parameter, group, questions, sampling_mean, avg_attempts, ratio, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% arrange(avg_attempts) %>% #filter(parameter == "Guess") %>%
   
   
   
   ggplot() + 
   aes(x=`Partition 1`, y=`Partition 2`, color = parameter) +
   geom_point(show.legend = TRUE, alpha = 0.4) +
-  facet_grid(dataset~ratio, scales = "free") + 
+  facet_grid(dataset~avg_attempts, scales = "free") + 
   ggtitle("Distribution of Sampling Mean for each Sample Size") + 
   scale_x_continuous(breaks = c(0,0.5)) + 
   scale_y_continuous(breaks = c(0,0.5)) + 
   ggpubr::theme_pubclean() + 
-  labs(color = "", subtitle = "Student to Item Ratio") + 
+  labs(color = "", subtitle = "Student Sample Size") + 
   theme(legend.position = "bottom")
 
 ```
 
 ```{r}
-df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, ratio, dataset) %>% 
-  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% mutate(diff = (`Partition 1` - `Partition 2`)^2) %>% group_by(parameter, ratio, dataset) %>% summarise(rms = mean(diff)^(1/2)) %>% 
+df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, avg_attempts, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% mutate(diff = (`Partition 1` - `Partition 2`)^2) %>% group_by(parameter, avg_attempts, dataset) %>% summarise(rms = mean(diff)^(1/2)) %>% 
   
   ggplot() + 
-  aes(x=ratio, y = rms, color = paste(parameter, "Parameter"), group = parameter) + 
+  aes(x=avg_attempts, y = rms, color = paste(parameter, "Parameter"), group = parameter) + 
   geom_line() + 
   geom_point(color="black") +
   facet_grid(dataset~.) + 
@@ -150,26 +158,26 @@ df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size
 
 
 ```{r}
-df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, ratio, dataset) %>% 
-  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% mutate(diff = (`Partition 1` - `Partition 2`)^2) %>% group_by(parameter, ratio, dataset) %>% mutate(rms = mean(diff)^(1/2)) %>% 
+df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, avg_attempts, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% mutate(diff = (`Partition 1` - `Partition 2`)^2) %>% group_by(parameter, avg_attempts, dataset) %>% mutate(rms = mean(diff)^(1/2)) %>% 
   
   ggplot() + 
-  aes(x=ratio, y = rms, color = paste(parameter, "Parameter"), fill = paste(parameter, "Parameter")) + 
+  aes(x=avg_attempts, y = rms, color = paste(parameter, "Parameter"), fill = paste(parameter, "Parameter")) + 
   geom_line(size = 1.1, show.legend = FALSE, aes(group = parameter)) + 
   #geom_point(aes(y=diff), position = position_jitterdodge(dodge.width = 0.9), alpha = 0.04,show.legend = FALSE) + 
   geom_boxplot(aes(y=diff), alpha = 0.4, show.legend = FALSE, color = "grey") +
   facet_grid(dataset~paste(parameter, "Parameter")) + 
-  labs(y="Distance between Sample Means", x = "Student to item ratio", color="", title = "Distribution of Distance between Sample Means of both Partitions") + theme_pubclean() + theme(legend.position = "bottom") + scale_y_continuous(breaks = c(0.01,0.3, 0.5,0.7,0.9))
+  labs(y="Distance between Sample Means", x = "Student Sample Size", color="", title = "Distribution of Distance between Sample Means of both Partitions") + theme_pubclean() + theme(legend.position = "bottom") + scale_y_continuous(breaks = c(0.01,0.3, 0.5,0.7,0.9))
 ```
 
 ```{r}
 
 df.error.plot %>% 
-  group_by(dataset, group, parameter, ratio) %>%
+  group_by(dataset, group, parameter, avg_attempts) %>%
   mutate(sampling_mean_mean = mean(sampling_mean)) %>%
   ungroup() %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_mean, fill = group) +
+  aes(x=avg_attempts, y=sampling_mean, fill = group) +
   geom_boxplot(alpha = 0.4, show.legend = FALSE, color = "grey") +
   #geom_line(aes(y=mean(sampling_mean), color = group, group = group), linetype = 1, size = 1.1) + 
   #geom_point(aes(y=mean(sampling_mean)), size = 1, show.legend = FALSE) + 
@@ -177,7 +185,7 @@ df.error.plot %>%
   geom_line(aes(y=sampling_mean_mean, color = group, group = group), linetype = 1, size = 1.1) + 
   geom_point(aes(y=sampling_mean_mean), size = 1, show.legend = FALSE) + 
   
-  labs(x="Student to Item Ratio", color="", y = "Sampling Mean") +
+  labs(x="Student Sample Size", color="", y = "Sampling Mean") +
   facet_grid(dataset~paste(parameter, "Parameter")) + 
   ggtitle("Distribution Containing Sampling Mean for each Sample Size") + ggpubr::theme_pubclean() + 
    theme(legend.position = "bottom") 
@@ -187,7 +195,7 @@ df.error.plot %>%
 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, ratio, dataset) %>% 
+df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, avg_attempts, dataset) %>% 
   spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% #filter(parameter == "Guess") %>%
   
   
@@ -195,7 +203,7 @@ df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size
   ggplot() + 
   aes(x=`Partition 1`, y=`Partition 2`, color = dataset) +
   geom_point(show.legend = TRUE, alpha = 0.4) +
-  facet_grid(dataset+parameter~ratio, scales = "free") + 
+  facet_grid(dataset+parameter~avg_attempts, scales = "free") + 
   ggtitle("Sampling Mean of Each Item") + 
   scale_x_continuous(breaks = c(0,0.5)) + 
   scale_y_continuous(breaks = c(0,0.5)) + 

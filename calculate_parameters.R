@@ -63,7 +63,7 @@ sample_size = 0.1
 
 
 get_boots_1 <- function(X.p1, X.p2, Q, sample_size) {
-  df.X.p1 <- X.p1 %>% union(X.p2) %>% sample_n(sample_size)
+  df.X.p1 <- X.p1 %>% union(X.p2) %>% sample_n(sample_size, replace = TRUE)
   
   df.X.p1 <- df.X.p1 %>% remove_empty(.,which = "cols")
   
@@ -99,22 +99,22 @@ get_boots_1 <- function(X.p1, X.p2, Q, sample_size) {
 }
 
 get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
-  df.X.p1 <- X.p1 %>% sample_n(sample_size)
-  df.X.p2 <- X.p2 %>% sample_n(sample_size)
+  X.p1.s <- X.p1 %>% sample_n(sample_size)
+  X.p2.s <- X.p2 %>% sample_n(sample_size)
   
-  df.X.p1 <- df.X.p1 %>% remove_empty(.,which = "cols")
-  df.X.p2 <- df.X.p2 %>% remove_empty(.,which = "cols")
+  X.p1.s <- X.p1.s %>% remove_empty(.,which = "cols")
+  X.p2.s <- X.p2.s %>% remove_empty(.,which = "cols")
   
-  Q_dist <-  df.X.p1 %>% gather() %>% arrange(key) %>% intersect(
-    df.X.p2 %>% gather()
+  Q_dist <-  X.p1.s %>% gather() %>% arrange(key) %>% intersect(
+    X.p2.s %>% gather()
   ) %>% distinct(key)
   
   Q_reduced <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(-key)
   Q_names <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(key)
   
-  df.X.p1 <- df.X.p1 %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
+  df.X.p1 <- X.p1.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
     semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id)
-  df.X.p2 <- df.X.p2 %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
+  df.X.p2 <- X.p2.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
     semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id)
   
   
@@ -123,10 +123,10 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
               "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
   
   print("Starting Boot 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced)
+  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced)
   
   
   question_size = dim(Q_reduced)[1]
@@ -141,7 +141,8 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
   
   
   df.data.sim <- df.s1_slip %>% bind_rows(df.s1_guess) %>% bind_rows(df.s2_slip) %>% bind_rows(df.s2_guess) 
-  return(list(df.data.sim,sqr, Q_names))
+  #browser()
+  return(list(df.data.sim,sqr, Q_names, X.p1.s, X.p2.s))
 }
 
 get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
@@ -157,22 +158,31 @@ get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
     df.data.sim <- df.t[[1]]
     sqr <- df.t[[2]]
     Q_names <- df.t[[3]][[1]]
+    df.X.p1 <- df.t[[4]]
+    df.X.p2 <- df.t[[5]]
+    
   }
   
   
   col_names <- colnames(df.data.sim %>% select(-group, -parameter) ) 
-  
+  #browser()
   df.data <- df.data.sim %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% 
     
     mutate(questions = factor(questions, 
                               labels = Q_names,
                               levels = col_names, # All unique values of questions header return by boot function v1:v_
                               ordered = TRUE)) %>% 
-    
-    group_by(group, parameter, questions) %>% 
+    left_join( 
+      df.X.p1 %>% summarise_all(funs(sum((!is.na(.))))) %>% gather(key="questions", value = "attempts") %>% mutate(group = "Partition 1") %>% union (
+      df.X.p2 %>% summarise_all(funs(sum((!is.na(.))))) %>% gather(key="questions", value = "attempts") %>% mutate(group = "Partition 2")   
+        
+      )
+    ) %>%
+    group_by(group, parameter, questions, attempts) %>% 
     summarise( 
-      total_count = n(),   
-      na_count = sum(is.na(item_parameters)),
+      #total_count = n(),   # Simulation Count
+      #na_count = sum(is.na(item_parameters)),
+      
       sampling_mean = mean(item_parameters), 
       sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
       sampling_variance = sampling_error^2
@@ -181,21 +191,12 @@ get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
     ungroup() %>% 
     mutate(sample_size = sample_size, ratio = sqr) #dim(df.X.p1)[1])
   
-  df.data.agg <- df.data.sim %>% gather(key = "questions", value="item_parameters", -group, -parameter) %>% 
-    
-    mutate(questions = factor(questions, 
-                              labels = Q_names,
-                              levels = col_names, # All unique values of questions header return by boot function v1:v_
-                              ordered = TRUE)) %>% 
-    
-    group_by(group, parameter, questions) %>% 
-    summarise( sampling_mean = mean(item_parameters), 
-               sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
-               sampling_variance = sampling_error^2
-    ) %>% 
+  df.data.agg <- df.data %>% 
     
     group_by(group, parameter) %>% 
-    summarise(sampling_error_mean = sqrt(sum(sampling_variance)/(n()-1))) %>%
+    summarise(sampling_error_mean = sqrt(sum(sampling_variance)/(n())),
+              avg_attempts = round(mean(attempts))
+              ) %>%
     
     ungroup() %>% 
     mutate(sample_size = sample_size, ratio = sqr) #dim(df.X.p1)[1])
