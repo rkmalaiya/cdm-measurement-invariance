@@ -78,7 +78,7 @@ get_boots_1 <- function(X.p1, X.p2, Q, sample_size) {
   print(paste0("All of X:", dim(df.X.p1)[1]))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 100, stype = "i",Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i",Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
   
   #print("Starting Boot 2")
   #X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i")
@@ -123,10 +123,10 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
               "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
   
   print("Starting Boot 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced)
+  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced)
   
   
   question_size = dim(Q_reduced)[1]
