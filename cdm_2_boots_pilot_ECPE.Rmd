@@ -304,4 +304,15 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
 
 ```
 
+# Model Fit
+
+```{r}
+
+write_rds(model_fit, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_ecpe.rds")
+
+model_fit <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_ecpe.rds")
+
+model_fit
+
+```
 

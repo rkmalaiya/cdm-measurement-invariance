@@ -42,6 +42,12 @@ glimpse(Q_from_book)
 
 ```
 
+```{r}
+
+Q_from_book %>% distinct(`Skill Level`)
+
+```
+
 
 ```{r}
 learning_obj <- Q_from_book %>%

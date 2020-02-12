@@ -1,6 +1,10 @@
 ---
 title: "Plots to publish"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  word_document: default
 ---
 
 
@@ -12,6 +16,7 @@ library(boot)
 library(tidyverse)
 library(stringi)
 library(stringr)
+library(ggridges)
 ```
 
 ```{r}
@@ -56,7 +61,7 @@ df.error.ss.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of 
 
 df.error.ss.plot <- df.error.ss %>% inner_join(
   df.error.ss.agg
-) %>% mutate(dataset = "Social Science")
+) %>% mutate(dataset = "Social Psychology")
 
 df.error.ss.plot
 
@@ -66,13 +71,15 @@ df.error.ss.plot
 
 ```{r}
 
-df.error.plot <- df.error.ec.plot %>% union(df.error.ti.plot) %>% union(df.error.ss.plot) %>%
+df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>%
   mutate(ratio_n = ratio) %>%
   mutate(ratio = factor(ratio, levels = sort(unique(as.numeric(ratio))), ordered = TRUE)) %>%
-  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Science"))) %>%
+  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology"))) %>%
   mutate(questions = factor(questions)) %>% 
   group_by(dataset, group, parameter, sample_size) %>%
   mutate(question_n = n(), qsr = round(n()/sample_size)) %>% 
+  
+  #mutate(sampling_error = sampling_error / sqrt(1000)) %>% # To get Smulation Error
   
   # Average avg_attempts between partitions
   group_by(dataset, parameter, sample_size) %>%
@@ -85,7 +92,7 @@ df.error.plot <- df.error.plot %>% mutate(qsr = factor(qsr, ordered = TRUE),
                                           sample_size = factor(sample_size, ordered = TRUE), 
                                           avg_attempts = factor(avg_attempts, ordered = TRUE)
                                           )
-df.error.plot 
+df.error.plot %>% group_by(group, parameter, attempts) %>% top_n(2) %>% select(questions, sampling_mean, sampling_error)
 ```
 
 # TIMSS 
@@ -144,6 +151,22 @@ df.error.plot %>% #filter(parameter == "Guess") %>%
 
 ```
 
+```{r}
+
+df.error.plot %>% filter(dataset == "Social Psychology" | avg_attempts > 14) %>% #filter(parameter == "Guess") %>%
+  ggplot() + 
+  aes(y=avg_attempts, x=sampling_error, fill = group) +
+  geom_density_ridges2(aes(height = ..density..), 
+                       stat = "density", rel_min_height=0.01, scale = 1,
+                       alpha = 0.3
+                       ) + 
+  
+  labs(x="Average students attempting each Question", color="", y = "Sampling Error") +
+  facet_grid(dataset~parameter, scales = "free") + 
+  ggtitle("Distribution containing Sampling Error for each Sample Size") + ggpubr::theme_pubclean() + 
+  theme(legend.position = "bottom", axis.text.x = element_text(size = 7)) 
+
+```
 
 ```{r}
 
@@ -195,6 +218,154 @@ df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size
   scale_y_continuous(breaks = c(0.01,0.3, 0.5,0.7,0.9))
 ```
 
+# 2 Sample Z Test
+
+```{r}
+df.error.plot
+```
+
+
+```{r}
+
+df.t <- df.error.plot #%>%   #%>% filter(dataset == "TIMSS")
+#mutate(sampling_mean = round(sampling_mean, 2),
+#       sampling_error = round(sampling_error, 2)
+#       )
+
+df.mean_diff <- df.t  %>% select(parameter, group, questions, sampling_mean, avg_attempts, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% rename("Partition1_mean" = `Partition 1`, "Partition2_mean" = `Partition 2`) %>% 
+  inner_join(
+    
+    df.t  %>% select(parameter, group, questions, sampling_error, avg_attempts, dataset) %>% 
+  spread(key="group", value = "sampling_error") %>% rename("Partition1_error" = `Partition 1`, "Partition2_error" = `Partition 2`)
+    
+  ) %>% group_by(dataset,parameter,avg_attempts,questions) %>% mutate(Z_test = 
+                                                                     
+                                                                        (Partition1_mean - Partition2_mean) / 
+                                                                        ( sqrt( ( (Partition1_error^2) ) + ((Partition2_error^2)) + 0.001^2 ) ) #  
+                                                                     
+                                                                     ) %>% 
+  
+  #filter(Z_test > -250 & Z_test < 250) %>%
+  group_by(dataset,parameter,avg_attempts) %>% mutate(Z_avg = mean(Z_test, na.rm = TRUE)) %>% ungroup()
+
+df.mean_diff %>% arrange(dataset, Z_test, questions, avg_attempts) %>% filter(parameter == "Guess") %>% select(-Z_avg) 
+
+```
+
+
+```{r}
+
+df.mean_diff %>%
+  
+  
+  ggplot() + 
+  aes(x=avg_attempts, y=Z_test, color = parameter ) +
+  geom_jitter(alpha = 0.4, width = 0.1) + 
+  facet_grid(dataset~parameter, scales = "free") + 
+  geom_line(aes(y=Z_avg, group = 1), size = 2) + 
+  scale_y_continuous(limits = c(-3,3))
+
+  
+```
+
+
+```{r}
+
+df.mean_diff  %>% filter(dataset == "Social Psychology" | avg_attempts > 14) %>%
+  
+  
+  ggplot() + 
+  aes(y=avg_attempts, x=Z_test) +
+  
+  geom_density_ridges2(aes(height = ..density..), 
+                       stat = "density", rel_min_height=0.01, 
+                       alpha = 0.3
+                       ) +
+  
+  #labs(y = "Student count (average) attempting each item", x = "Mean Difference between partitions", title = "") + 
+  labs(y = "Student count (average) attempting each item", x = "Item-Parameter Bias Z score", title = "") + 
+  geom_vline(aes(xintercept = 1.6), linetype = 2) + 
+  geom_vline(aes(xintercept = -1.6), linetype = 2) + 
+  theme_pubclean() + 
+  facet_grid(dataset ~ parameter, scales = "free", 
+             labeller = label_wrap_gen(width = 10, multi_line = FALSE))  + 
+    theme(axis.text.x = element_text(size = 12), 
+          axis.text.y = element_text(size = 10.5),
+          strip.text.x = element_text(size = 14),
+          strip.text.y = element_text(size = 14),
+          axis.title.x = element_text(size = 18),
+          axis.title.y = element_text(size = 16)
+          
+          ) + scale_x_continuous(limits = c(-3,3), breaks = seq(-3,3,1))
+
+  
+```
+
+# Percentage Change
+```{r}
+
+df.mean_diff.plot <- df.mean_diff  %>% filter(dataset == "Social Psychology" | avg_attempts > 14) %>% arrange(dataset, parameter, questions, avg_attempts, Z_test) %>% select(dataset, parameter, questions, avg_attempts, Partition1_error, Partition2_error) %>% 
+  mutate_if(is.numeric , .funs = round, 6 ) %>% 
+  group_by(dataset, parameter, questions) %>% 
+  mutate(change_1 = (Partition1_error - lag(Partition1_error)) / ifelse(lag(Partition1_error) == 0, 1, lag(Partition1_error)) ) %>% # (New - Old) / Old
+  mutate(change_2 = (Partition2_error - lag(Partition2_error)) / ifelse(lag(Partition2_error) == 0, 1, lag(Partition2_error) ) ) %>%
+  replace_na(list(change_1 = 0, change_2 = 0))
+  
+df.mean_diff.plot #%>% filter(questions == 'E27')
+
+```
+
+
+```{r}
+df.mean_diff.plot <- df.mean_diff.plot %>%
+  group_by(dataset, parameter, avg_attempts) %>% 
+  summarize(mean_change_1 = median(change_1, na.rm = TRUE ),
+            mean_change_2 = median(change_2, na.rm = TRUE )
+            
+            )
+  
+df.mean_diff.plot
+```
+
+
+```{r}
+df.t <- df.mean_diff.plot %>% mutate(attempt_bin = str_c(lag(avg_attempts), "-" , avg_attempts)) %>% filter(!is.na(attempt_bin) ) 
+
+df.t$attempt_bin <- factor(df.t$attempt_bin, ordered = TRUE, levels = unique((arrange(df.t, avg_attempts))$attempt_bin))
+
+
+df.t %>%
+
+
+
+
+ggplot() + 
+  aes(x=attempt_bin, y=mean_change_1) +
+  geom_col(alpha = 0.4) + facet_grid(parameter~dataset, scales = "free") + 
+  ggtitle("Effect of Student Attempts on Item Parameter's Standard Errors") + labs(x="Average Student Attempts", y = "Typical Percentage Change (Median)") + scale_y_continuous(labels = scales::percent_format(accuracy = 2))
+  
+```
+
+
+
+```{r}
+df.error.plot %>% select(parameter, group, questions, sampling_mean, avg_attempts, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% arrange(avg_attempts) %>% mutate(diff = (`Partition 1` - `Partition 2`)^2) %>% group_by(parameter, avg_attempts, dataset) %>% mutate(rms = mean(diff)^(1/2)) %>% 
+  
+  ggplot() + 
+  aes(x=avg_attempts, y = rms, color = paste(parameter, "Parameter"), fill = paste(parameter, "Parameter")) + 
+  geom_line(size = 1.1, show.legend = TRUE, aes(group = parameter)) + 
+  geom_point(aes(y=diff), position = position_jitterdodge(dodge.width = 0.9), alpha = 0.4,show.legend = FALSE) + 
+  #geom_boxplot(aes(y=diff), alpha = 0.4, show.legend = FALSE, color = "grey38") +
+  facet_grid(dataset~.) + 
+  labs(y="Distance between Sample Means", x = "Average students attempting each Question", 
+       color="", title = "Distribution of Distance between Sample Means of both Partitions",
+       color="", fill = "") + 
+  theme_pubclean() + theme(legend.position = "bottom", axis.text.x = element_text(size = 7)) + 
+  scale_y_continuous(breaks = c(0.01,0.3, 0.5,0.7,0.9))
+```
+
 ```{r}
 
 df.error.plot %>% 
@@ -219,30 +390,8 @@ df.error.plot %>%
 
 ```{r}
 
-df.error.plot %>% 
-  group_by(dataset, group, parameter, avg_attempts) %>%
-  mutate(sampling_mean_mean = mean(sampling_mean)) %>%
-  ungroup() %>%
-  ggplot() + 
-  aes(x=avg_attempts, y=sampling_mean, fill = group) +
-  geom_violin(alpha = 0.4, show.legend = FALSE) +
-  #geom_line(aes(y=mean(sampling_mean), color = group, group = group), linetype = 1, size = 1.1) + 
-  #geom_point(aes(y=mean(sampling_mean)), size = 1, show.legend = FALSE) + 
-  
-  geom_line(aes(y=sampling_mean_mean, color = group, group = group), linetype = 1, size = 1.1) + 
-  geom_point(aes(y=sampling_mean_mean), size = 1, show.legend = FALSE) + 
-  
-  labs(x="Average students attempting each Question", color="", y = "Sampling Mean") +
-  facet_grid(dataset~paste(parameter, "Parameter")) + 
-  ggtitle("Distribution Containing Sampling Mean for each Sample Size") + ggpubr::theme_pubclean() + 
-   theme(legend.position = "bottom", axis.text.x = element_text(size = 7)) 
-
-```
-
-```{r}
-
-df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size, avg_attempts, dataset) %>% 
-  spread(key="group", value = "sampling_mean") %>% arrange(sample_size) %>% #filter(parameter == "Guess") %>%
+df.error.plot %>% select(parameter, group, questions, sampling_mean, avg_attempts, dataset) %>% 
+  spread(key="group", value = "sampling_mean") %>% arrange(avg_attempts) %>% #filter(parameter == "Guess") %>%
   
   
   
@@ -254,10 +403,60 @@ df.error.plot %>% select(parameter, group, questions, sampling_mean, sample_size
   scale_x_continuous(breaks = c(0,0.5)) + 
   scale_y_continuous(breaks = c(0,0.5)) + 
   ggpubr::theme_pubclean() + 
-  labs(color = "", subtitle = "Student to Item Ratio") + 
+  labs(color = "", subtitle = "Average Students attepting item") + 
   theme(legend.position = "bottom")
 
 ```
+
+
+```{r}
+
+df.mean_diff %>% group_by( dataset, parameter, avg_attempts, Z_test) %>% top_n(-1)
+
+```
+
+
+# Model fit
+```{r}
+
+model_fit_ECPE <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_ECPE.rds") %>% add_column(dataset = "ECPE")
+
+
+model_fit_timss <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_timss.rds") %>% add_column(dataset = "TIMSS")
+
+model_fit_SS <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_socialscience.rds") %>% add_column(dataset = "Social Psychology")
+
+
+df.model_fit <- bind_rows(model_fit_ECPE, model_fit_timss, model_fit_SS) #%>% filter(sample_size != -1)
+
+
+
+
+df.model_fit <- df.error.plot %>% select(dataset, sample_size, avg_attempts) %>% inner_join(df.model_fit %>% mutate(sample_size = factor(sample_size, ordered = TRUE)))
+
+df.model_fit  
+
+```
+
+```{r}
+df.model_fit  %>% group_by(dataset, type, avg_attempts) %>% summarise(value = median(value, na.rm = TRUE), p = median(round(p,3), na.rm = TRUE)) %>% filter(type != "abs(fcor)")
+```
+
+
+
+```{r}
+
+df.model_fit %>%  #%>% group_by(dataset, type, sample_size) %>% summarise_all(.funs = mean)
+
+  ggplot() + 
+  aes(x=sample_size, y = value) + 
+  geom_col() + 
+  facet_grid(dataset~type, scales = "free") 
+  
+  
+  
+```
+
 
 
 

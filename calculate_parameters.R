@@ -25,8 +25,15 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   return(list(ratio = student_question_ratios, sample_size = sample_sizes))
 }
 
+model_fit = data.frame(type = NA, value = NA, p=NA, sample_size = NA)
+accumulate_fit <- function(sample_size, fit) {
+  browser()
+  fit = cbind(fit$modelfit.test, sample_size)
+  
+  model_fit <<- rbind(model_fit, fit)
+}
 
-total_cdm_fn <- function(df, i = 1:dim(df)[1], Q_reduced) {
+total_cdm_fn <- function(df, i = 1:dim(df)[1], Q_reduced, sample_size = -1) {
   
   #print(dim(df))
   #browser()
@@ -38,6 +45,9 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1], Q_reduced) {
   ###########################
   #print(Q_reduced)
   df.cdm <- CDM::din(df.t.s1, Q_reduced, progress=FALSE)
+  
+  fit <- IRT.modelfit(df.cdm)
+  accumulate_fit(sample_size = sample_size, fit = fit)
   
   
   df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1))) %>% 
@@ -78,7 +88,7 @@ get_boots_1 <- function(X.p1, X.p2, Q, sample_size) {
   print(paste0("All of X:", dim(df.X.p1)[1]))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i",Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 10, stype = "i",Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
   
   #print("Starting Boot 2")
   #X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i")
@@ -123,10 +133,10 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
               "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
   
   print("Starting Boot 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced)
+  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
   
   
   question_size = dim(Q_reduced)[1]
@@ -178,9 +188,9 @@ get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
         
       )
     ) %>%
-    group_by(group, parameter, questions, attempts) %>% 
+    group_by(group, parameter, attempts, questions) %>% 
     summarise( 
-      #total_count = n(),   # Simulation Count
+      total_count = n(),   # Simulation Count
       #na_count = sum(is.na(item_parameters)),
       
       sampling_mean = mean(item_parameters), 

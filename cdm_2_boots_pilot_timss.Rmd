@@ -296,3 +296,15 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
   ggtitle("Sampling Error of Each Item")
 
 ```
+
+
+```{r}
+
+write_rds(model_fit, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_timss.rds")
+
+model_fit <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_timss.rds")
+
+model_fit
+
+```
+
