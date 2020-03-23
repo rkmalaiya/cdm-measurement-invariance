@@ -17,6 +17,7 @@ library(tidyverse)
 library(stringi)
 library(stringr)
 library(ggridges)
+library(ggrepel)
 ```
 
 ```{r}
@@ -113,6 +114,7 @@ df.error.ec.plot %>% filter(avg_attempts == 140)  %>%
   
   
 ```
+
 
 
 # Sampling Error
@@ -239,10 +241,12 @@ df.mean_diff <- df.t  %>% select(parameter, group, questions, sampling_mean, avg
     df.t  %>% select(parameter, group, questions, sampling_error, avg_attempts, dataset) %>% 
   spread(key="group", value = "sampling_error") %>% rename("Partition1_error" = `Partition 1`, "Partition2_error" = `Partition 2`)
     
-  ) %>% group_by(dataset,parameter,avg_attempts,questions) %>% mutate(Z_test = 
-                                                                     
-                                                                        (Partition1_mean - Partition2_mean) / 
-                                                                        ( sqrt( ( (Partition1_error^2) ) + ((Partition2_error^2)) + 0.001^2 ) ) #  
+  ) %>% group_by(dataset,parameter,avg_attempts,questions) %>% mutate(
+                                                                      diff = Partition1_mean - Partition2_mean,
+                                                                      #Z_test = diff / 
+                                                                      #  ( sqrt( ( (Partition1_error^2) ) + ((Partition2_error^2)) + 0.001^2 ) ) #  
+                                                                      Z_test = diff / Partition1_mean,
+                                                                      #  ( sqrt( ( (Partition1_error^2) ) + ((Partition2_error^2)) + 0.001^2 ) )
                                                                      
                                                                      ) %>% 
   
@@ -252,6 +256,75 @@ df.mean_diff <- df.t  %>% select(parameter, group, questions, sampling_mean, avg
 df.mean_diff %>% arrange(dataset, Z_test, questions, avg_attempts) %>% filter(parameter == "Guess") %>% select(-Z_avg) 
 
 ```
+
+```{r}
+
+df.diff <- df.mean_diff %>% group_by(dataset, parameter, avg_attempts) %>%
+  summarize(
+    mn = median(diff),
+    sd = sd(diff),
+    min = min(diff),
+    max = max(diff)
+    
+  )
+
+df.diff
+
+```
+
+```{r}
+
+df.diff %>% ggplot() + 
+  aes(x=avg_attempts, y = sd, fill = parameter) + 
+  geom_col() + 
+  facet_grid(dataset~parameter,scales = "free") + labs(x = "Average Student Attempts", y = "Standard Deviation", title = "Standard Deviation of Sampling Mean Difference") +
+  geom_text(aes(label = round(sd,2))) 
+
+
+```
+
+```{r}
+as.character(-1)
+```
+
+
+```{r}
+
+df.diff %>% ggplot() + 
+  aes(x=avg_attempts, y = mn, color = dataset) + 
+  geom_line(aes(group = dataset)) + 
+  facet_grid(.~parameter,scales = "free") + labs(x = "Average Student Attempts", y = "Mean", title = "Average of Sampling Mean Difference") +
+  geom_label_repel(aes(label = round(mn,2))) 
+
+
+```
+
+```{r}
+
+df.diff %>% ggplot() + 
+  aes(x=avg_attempts, y = sd, color = dataset) + 
+  geom_line(aes(group = dataset)) + 
+  facet_grid(.~parameter,scales = "free") + labs(x = "Average Student Attempts", y = "Standard Deviation", title = "Standard Deviation of Sampling Mean Difference") +
+  geom_label_repel(aes(label = round(sd,2))) 
+
+
+```
+
+
+```{r}
+
+df.diff %>% group_by(dataset, parameter)%>% arrange(dataset, parameter, avg_attempts) %>% mutate(first = first(sd)) %>% mutate(diff_from_first = ((sd-first)/first) ) %>% 
+  
+  ggplot() + 
+  aes(x=avg_attempts, y = diff_from_first, color = dataset) + 
+  geom_line(aes(group = dataset)) + 
+  facet_grid(.~parameter,scales = "free") + labs(x = "Average Student Attempts", y = "Standard Deviation", title = "Percentage drop in Standard Deviation of Sampling Mean Difference") +
+  geom_label(aes(label = paste0(round(diff_from_first*100,2),"%"))) + 
+  scale_y_continuous(labels=scales::percent_format(accuracy = 1))
+
+
+```
+
 
 
 ```{r}
@@ -278,8 +351,41 @@ df.mean_diff  %>% filter(dataset == "Social Psychology" | avg_attempts > 14) %>%
   ggplot() + 
   aes(y=avg_attempts, x=Z_test) +
   
+  geom_density_ridges(aes(height = ..density..), 
+                      stat = "density", rel_min_height=0.01, 
+                      alpha = 0.3
+                       ) +
+  
+  #labs(y = "Student count (average) attempting each item", x = "Mean Difference between partitions", title = "") + 
+  labs(y = "Student count (average) attempting each item", x = "Item-Parameter Bias Relative difference", title = "") + 
+  geom_vline(aes(xintercept = 1.6), linetype = 2) + 
+  geom_vline(aes(xintercept = -1.6), linetype = 2) + 
+  theme_pubclean() + 
+  facet_grid(dataset ~ parameter, scales = "free", 
+             labeller = label_wrap_gen(width = 10, multi_line = FALSE))  + 
+    theme(axis.text.x = element_text(size = 12), 
+          axis.text.y = element_text(size = 10.5),
+          strip.text.x = element_text(size = 14),
+          strip.text.y = element_text(size = 14),
+          axis.title.x = element_text(size = 18),
+          axis.title.y = element_text(size = 16)
+          
+          ) + scale_x_continuous(limits = c(-3,3), breaks = seq(-3,3,1))
+
+  
+```
+
+
+```{r}
+
+df.mean_diff  %>% filter(dataset == "Social Psychology" | avg_attempts > 14) %>%
+  
+  
+  ggplot() + 
+  aes(y=avg_attempts, x=Z_test) +
+  
   geom_density_ridges2(aes(height = ..density..), 
-                       stat = "density", rel_min_height=0.01, 
+                       stat = "binline", rel_min_height=0.01, 
                        alpha = 0.3
                        ) +
   
@@ -343,7 +449,7 @@ df.t %>%
 ggplot() + 
   aes(x=attempt_bin, y=mean_change_1) +
   geom_col(alpha = 0.4) + facet_grid(parameter~dataset, scales = "free") + 
-  ggtitle("Effect of Student Attempts on Item Parameter's Standard Errors") + labs(x="Average Student Attempts", y = "Typical Percentage Change (Median)") + scale_y_continuous(labels = scales::percent_format(accuracy = 2))
+  ggtitle("Effect of Student Attempts on Item Parameter's Sampling Errors") + labs(x="Average Student Attempts", y = "Typical Percentage Change (Median)") + scale_y_continuous(labels = scales::percent_format(accuracy = 2))
   
 ```
 

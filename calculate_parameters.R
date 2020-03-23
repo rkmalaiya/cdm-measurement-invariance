@@ -6,7 +6,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c(0.1, 0.2, 0.3, 0.4, 0.5, 1,2,5, 10, 15)
+  student_question_ratios = c(0.3, 0.4, 0.5, 1,2,5, 10, 15) #0.1, 0.2, 
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
@@ -27,7 +27,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
 
 model_fit = data.frame(type = NA, value = NA, p=NA, sample_size = NA)
 accumulate_fit <- function(sample_size, fit) {
-  browser()
+  #browser()
   fit = cbind(fit$modelfit.test, sample_size)
   
   model_fit <<- rbind(model_fit, fit)
@@ -88,7 +88,7 @@ get_boots_1 <- function(X.p1, X.p2, Q, sample_size) {
   print(paste0("All of X:", dim(df.X.p1)[1]))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 10, stype = "i",Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 5, stype = "i",Q_reduced = Q_reduced) # R needs to be 2 atleast for below code to work correctly
   
   #print("Starting Boot 2")
   #X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i")
@@ -133,10 +133,10 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
               "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
   
   print("Starting Boot 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 5, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
   
   print("Starting Boot 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 1000, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
+  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 5, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
   
   
   question_size = dim(Q_reduced)[1]

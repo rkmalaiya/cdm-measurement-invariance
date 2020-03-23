@@ -22,8 +22,8 @@ source('calculate_parameters.R')
 options(max.print=100)
 
 
-df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv") %>% mutate_all(as.integer)
-df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv") %>% mutate_all(as.integer)
+#df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
+#df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
 
 
 #X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
@@ -162,16 +162,16 @@ for(i in 2:length(sample_sizes)) {
 ```
 
 ```{r}
-write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
+write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_ecpe.rds")
 
-write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
+write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
 ```
 
 
 ```{r}
-df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_ecpe.rds")
+df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_ecpe.rds")
 
-df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_ecpe.rds")
+df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
 
 
 ```
@@ -308,9 +308,9 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
 
 ```{r}
 
-write_rds(model_fit, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_ecpe.rds")
+write_rds(model_fit, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_model_fit_ecpe.rds")
 
-model_fit <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_ecpe.rds")
+model_fit <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_model_fit_ecpe.rds")
 
 model_fit
 
