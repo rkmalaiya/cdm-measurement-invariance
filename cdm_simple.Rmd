@@ -1,0 +1,53 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+
+
+```{r}
+library(tidyverse)
+library(CDM)
+```
+
+
+```{r}
+X = data.ecpe$data
+Q = data.ecpe$q.matrix
+```
+
+
+```{r}
+dim(X)
+```
+
+```{r}
+dim(Q)
+```
+
+
+```{r}
+
+model_dina <- din(X %>% select(-id), Q)
+model_dina$slip
+
+```
+
+
+```{r}
+
+model_dina$subj.pattern
+
+
+```
+
+```{r}
+
+head(IRT.factor.scores(model_dina, type = "MAP"))
+
+
+```
+
+

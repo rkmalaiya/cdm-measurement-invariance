@@ -41,7 +41,7 @@ X
 ```
 
 
-# Bootstrap Sample 
+# Sum up Marks 
 
 See how the items are performing
 ```{r}
@@ -77,7 +77,7 @@ t
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 1000, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_percent_fn, R = 10, stype = "i")
 
 plot(X.bt)
 ```
@@ -120,6 +120,7 @@ df.t %>% gather(key = "questions", value="percent_questions_answered", -group) %
 
 ```
 
+# CDM Estimation
 
 ```{r}
 
@@ -132,7 +133,7 @@ model_dina$slip
 
 
 
-# Calculate item parameters
+## Calculate item parameters
 
 ```{r}
 library(CDM)
@@ -149,32 +150,45 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
   ###########################
   
   df.cdm <- CDM::din(df.t.mastery, Q, progress=FALSE)
+  df.profile <- IRT.factor.scores(df.cdm, type = "MAP") 
+
  
    df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("mastery_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("mastery_slip_E", seq(1,28,1)))
  
   
   df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("mastery_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("mastery_guess_E", seq(1,28,1)))
   
+  df.p1 <- tibble("value" = df.profile[,1], "key" = paste0("mastery_subj_id", seq(1,length(df.profile[,1]),1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("mastery_subj_id", seq(1,length(df.profile[,1]),1)))
+  
   ###########################
  
   df.cdm <- CDM::din(df.t.ave, Q, progress=FALSE)
+  df.profile <- IRT.factor.scores(df.cdm, type = "MAP") 
  
   df.t3 <- tibble("value" = df.cdm$slip$est, "key" = paste0("average_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("average_slip_E", seq(1,28,1)))
  
   
   df.t4 <- tibble("value" = df.cdm$guess$est, "key" = paste0("average_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("average_guess_E", seq(1,28,1)))
   
+  df.p2 <- tibble("value" = df.profile[,1], "key" = paste0("average_subj_id", seq(1,length(df.profile[,1]),1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("average_subj_id", seq(1,length(df.profile[,1]),1)))
+  
   #############################
   
   df.cdm <- CDM::din(df.t.non_mastery, Q, progress=FALSE)
+  df.profile <- IRT.factor.scores(df.cdm, type = "MAP") 
  
   df.t5 <- tibble("value" = df.cdm$slip$est, "key" = paste0("non_mastery_slip_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("non_mastery_slip_E", seq(1,28,1)))
  
   
   df.t6 <- tibble("value" = df.cdm$guess$est, "key" = paste0("non_mastery_guess_E", seq(1,28,1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("non_mastery_guess_E", seq(1,28,1)))
   
+  df.p3 <- tibble("value" = df.profile[,1], "key" = paste0("non_mastery_subj_id", seq(1,length(df.profile[,1]),1))) %>% spread(key = "key", value = "value") %>% select(!!!paste0("non_mastery_subj_id", seq(1,length(df.profile[,1]),1)))
   
-  df.t <- cbind(df.t1, df.t2, df.t3, df.t4, df.t5, df.t6)
+  df.t <- cbind(df.t1, df.t2, df.t3, df.t4, df.t5, df.t6, df.p1, df.p2, df.p3)
+  print(dim(df.p1))
+  print(dim(df.p2))
+  print(dim(df.p3))
+  
   
  return(as.matrix(df.t))
     
@@ -182,12 +196,14 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1]) {
 
 t_cdm <- total_cdm_fn(df.data)
 
-t_cdm 
+head(as.data.frame(t_cdm ))
 ```
+
+
 
 ```{r}
 
-X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 10, stype = "i")
+X.bt <- boot(data = df.data , statistic = total_cdm_fn, R = 5, stype = "i")
 
 plot(X.bt)
 ```
@@ -209,6 +225,12 @@ df.ave_guess <- X.bt$t[,85:112] %>% as_tibble() %>% mutate(parameter = "Guess", 
 
 df.nm_slip <- X.bt$t[,113:140] %>%  as_tibble() %>% mutate(parameter = "Slip", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Non-Mastery.")])
 df.nm_guess <- X.bt$t[,141:168] %>% as_tibble() %>% mutate(parameter = "Guess", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Non-Mastery.")])
+
+
+df.m_profile <- X.bt$t %>%  as_tibble() %>% 
+  select(contains("mastery_subj")) %>%
+  mutate(parameter = "Slip", group = unique(df.data$mastery)[str_detect( unique(df.data$mastery) ,"^Mastery.")])
+
 
 df.data.sim <- df.m_slip %>% bind_rows(df.m_guess) %>% 
   bind_rows(df.ave_slip) %>% bind_rows(df.ave_guess) %>% 
