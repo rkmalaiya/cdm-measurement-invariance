@@ -6,7 +6,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c(0.2, 0.3, 0.4, 0.5, 1,2,5, 10, 15) #0.1, 0.2, 0.3 
+  student_question_ratios = c( 0.3, 0.4, 0.5,1,2,5, 10, 15) #0.1, 0.2,   
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
@@ -30,6 +30,8 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1], Q_reduced, sample_size = -1) {
   #print(dim(df))
   #browser()
   #df.t <- X
+  #Q_reduced = Q
+  
   df.t <- df[i,]
   
   df.t.s1 <- df.t #%>% select(E1:E28) 
@@ -50,7 +52,7 @@ total_cdm_fn <- function(df, i = 1:dim(df)[1], Q_reduced, sample_size = -1) {
     select(!!!paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1))) 
   
 
-  df.t <- cbind(df.t1, df.t2) %>% mutate(fit_SRMSR = fit$modelfit.stat['SRMSR',])
+  df.t <- cbind(df.t1, df.t2) %>% mutate(fit_SRMSR = fit$modelfit.stat['SRMSR',]) %>% mutate(fit_chi_sqr = fit$modelfit.test[1,2], p_chi_sqr = fit$modelfit.test[1,3] )
   
   return(as.matrix(df.t))
   
@@ -87,23 +89,31 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
               "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
   
   print("Starting Boot for Partition 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 100, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
   
   print("Starting Boot for Partition 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 100, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
+  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
 
   question_size = dim(Q_reduced)[1]
   sqr = round(dim(df.X.p1)[1] / dim(df.X.p1)[2] ,1)
 
   df.s1_slip <- X.bt.1$t[,1:question_size] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Partition 1", type = "item")
-  df.s1_guess <- X.bt.1$t[,(question_size+1):(ncol(X.bt.1$t) - 1)] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 1", type = "item")
-  df.s1_SRMSR <- X.bt.1$t[,ncol(X.bt.1$t):ncol(X.bt.1$t)] %>% as_tibble() %>% rename(fit_SRMSR = value) %>% mutate(parameter = "SRMSR", group = "Partition 1", type = "fit")
+  df.s1_guess <- X.bt.1$t[,(question_size+1):(ncol(X.bt.1$t) - 3)] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 1", type = "item")
+  #browser()
+  df.s1_SRMSR <- X.bt.1$t[,(ncol(X.bt.1$t)-2):(ncol(X.bt.1$t)-2)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "SRMSR", group = "Partition 1", type = "fit_val")
+  
+  df.s1_chi_sqr_fit <- X.bt.1$t[,(ncol(X.bt.1$t)-1):(ncol(X.bt.1$t)-1)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 1", type = "fit_val")
+  df.s1_chi_sqr_p <- X.bt.1$t[,ncol(X.bt.1$t):ncol(X.bt.1$t)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 1", type = "p_val")
+  
   
   
   df.s2_slip <- X.bt.2$t[,1:question_size] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Partition 2", type = "item")
-  df.s2_guess <- X.bt.2$t[,(question_size+1):(ncol(X.bt.2$t)-1)] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 2", type = "item")
-  df.s2_SRMSR <- X.bt.2$t[,ncol(X.bt.2$t):ncol(X.bt.2$t)] %>% as_tibble() %>% rename(fit_SRMSR = value) %>% mutate(parameter = "SRMSR", group = "Partition 2", type = "fit")
+  df.s2_guess <- X.bt.2$t[,(question_size+1):(ncol(X.bt.2$t)-3)] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 2", type = "item")
   
+  df.s2_SRMSR <- X.bt.2$t[,(ncol(X.bt.2$t)-2):(ncol(X.bt.2$t)-2)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "SRMSR", group = "Partition 2", type = "fit_val")
+  
+  df.s2_chi_sqr_fit <- X.bt.1$t[,(ncol(X.bt.2$t)-1):(ncol(X.bt.2$t)-1)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 2", type = "fit_val")
+  df.s2_chi_sqr_p <- X.bt.1$t[,ncol(X.bt.2$t):ncol(X.bt.2$t)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 2", type = "p_val")
   
   
   
@@ -121,7 +131,10 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
           levels = col_names, # All unique values of questions header return by boot function v1:v_
           ordered = TRUE))
   
-  df.t2 <- df.s1_SRMSR %>% bind_rows(df.s2_SRMSR) %>% gather(key = "entities", value="values", -group, -parameter, -type)
+  df.t2 <- df.s1_SRMSR %>% bind_rows(df.s2_SRMSR) %>% 
+           bind_rows(df.s1_chi_sqr_fit) %>% bind_rows(df.s1_chi_sqr_p) %>%
+           bind_rows(df.s2_chi_sqr_fit) %>% bind_rows(df.s2_chi_sqr_p) %>%
+           gather(key = "entities", value="values", -group, -parameter, -type)
   
   df.data.sim <- df.t1.1 %>% bind_rows(df.t2)
   
@@ -180,12 +193,12 @@ get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
   
   #browser()
   # Stats for Fit Parameters
-  df.data.fit <- df.data.sim %>% filter(type == "fit") %>% select(-type) %>% rename(fit = entities, fit_value = values) %>%
+  df.data.fit <- df.data.sim %>% filter(entities == "model_fit") %>% select(-entities) %>% rename(fit = type, fit_value = values) %>%
     group_by(group, parameter, fit) %>%
     summarise( 
      
-      sampling_mean = mean(fit_value), 
-      sampling_error = sqrt(sum((fit_value - sampling_mean)^2)/(n() - 1)), 
+      sampling_mean = mean(fit_value, na.rm = TRUE), 
+      sampling_error = sqrt(sum((fit_value - sampling_mean)^2, na.rm = TRUE)/(n() - 1)), 
      
     ) %>% mutate(sample_size = sample_size, student_question_ratio = sqr) %>% inner_join(  
       df.data %>% distinct(group, attempts)

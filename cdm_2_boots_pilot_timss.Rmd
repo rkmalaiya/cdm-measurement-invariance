@@ -323,7 +323,7 @@ df.fit.plot
 
 
 ```{r}
-df.fit.plot  %>% select(parameter,group,sample_size,attempts, sampling_error_3) %>%
+df.fit.plot  %>% select(parameter,fit, group,sample_size,attempts, sampling_error_3) %>%
   spread(key="group", value = "sampling_error_3") %>% arrange(sample_size) %>%
   
   
@@ -331,7 +331,7 @@ df.fit.plot  %>% select(parameter,group,sample_size,attempts, sampling_error_3) 
   ggplot() + 
   aes(x=`Partition 1`, y=`Partition 2`, color=attempts) +
   geom_jitter() +
-  
+  facet_grid(parameter~fit, scales = "free") + 
   labs() +
   #facet_wrap(.~attempts, scales = "free") + 
   ggtitle("Sampling Error of Each Item")

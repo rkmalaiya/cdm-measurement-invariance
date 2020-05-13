@@ -79,9 +79,9 @@ df.error.ss.plot
 ```{r}
 
 df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>%
-  mutate(ratio_n = ratio) %>%
-  mutate(ratio = factor(ratio, levels = sort(unique(as.numeric(ratio))), ordered = TRUE)) %>%
-  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology"))) %>%
+  mutate(ratio_n = student_question_ratio) %>%
+  mutate(student_question_ratio = factor(student_question_ratio, levels = sort(unique(as.numeric(student_question_ratio))), ordered = TRUE)) %>%
+  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology (Upsample)"))) %>%
   mutate(questions = factor(questions)) %>% 
   group_by(dataset, group, parameter, sample_size) %>%
   mutate(question_n = n(), qsr = round(n()/sample_size)) %>% 
@@ -101,6 +101,22 @@ df.error.plot <- df.error.plot %>% mutate(qsr = factor(qsr, ordered = TRUE),
                                           )
 df.error.plot %>% group_by(group, parameter, attempts) %>% top_n(2) %>% select(questions, sampling_mean, sampling_error)
 ```
+
+```{r}
+
+df.fit.plot <- df.error.ec.fit %>% bind_rows(df.error.ss.fit) %>% bind_rows(df.error.ti.fit)
+df.fit.plot
+
+```
+
+Need to take average because for different sample sizes there can be same number of attempts
+
+```{r}
+
+df.fit.plot.attempts <- df.fit.plot %>% group_by(group, parameter, fit, dataset, sample_size) %>% summarise_all(.funs = mean)
+df.fit.plot.attempts
+```
+
 
 
 # Sampling Error
@@ -142,7 +158,7 @@ df.error.plot %>% #filter(parameter == "Guess") %>%
 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_mean, avg_attempts, ratio, dataset) %>% 
+df.error.plot %>% select(parameter, group, questions, sampling_mean, avg_attempts, student_question_ratio, dataset) %>% 
   spread(key="group", value = "sampling_mean") %>% arrange(avg_attempts) %>% #filter(parameter == "Guess") %>%
   
   
@@ -212,22 +228,6 @@ df.diff <- df.mean_diff %>% group_by(dataset, parameter, avg_attempts) %>%
 df.diff
 
 ```
-
-```{r}
-
-df.diff %>% ggplot() + 
-  aes(x=avg_attempts, y = sd, fill = parameter) + 
-  geom_col() + 
-  facet_grid(dataset~parameter,scales = "free") + labs(x = "Average Student Attempts", y = "Standard Deviation", title = "Standard Deviation of Sampling Mean Difference") +
-  geom_text(aes(label = round(sd,2))) 
-
-
-```
-
-```{r}
-as.character(-1)
-```
-
 
 
 # Plot for poster presentation
@@ -324,4 +324,35 @@ df.mean_diff  %>% filter(dataset == "Social Psychology" | avg_attempts > 14) %>%
 
   
 ```
+
+# EDA Model Fit
+
+```{r}
+
+
+df.fit.plot.attempts %>% arrange(sample_size) %>% distinct(group, sample_size, dataset) %>% filter(dataset == "Social Psychology (Upsample)") %>% filter(group == "Partition 2")
+
+```
+
+```{r}
+
+df.fit.plot.attempts %>% filter(group == "Partition 1") %>%
+  
+  ggplot() +
+  aes(x=attempts, y=sampling_error, color = dataset, group = group) +
+  geom_line() +
+  geom_label(aes(label = round(sampling_error,6)))+
+  geom_hline(aes(yintercept=0.05),linetype="dotted") +
+  #scale_x_continuous(limits = c(0,300)) + 
+  facet_wrap(dataset~.,scales = "free")
+  
+  
+  
+  
+
+```
+
+
+
+
 

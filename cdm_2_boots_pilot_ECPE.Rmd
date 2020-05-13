@@ -318,7 +318,7 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
 # Model Fit
 
 ```{r}
-df.fit.plot <- df.error.fit  %>% select(parameter, group, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
+df.fit.plot <- df.error.fit  %>% select(parameter, fit, group, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
   mutate(sampling_error_3= round(sampling_error,3),
          attempts_bin = cut(round(attempts), breaks = 6, right = TRUE, ordered_result = TRUE)
          )
@@ -328,7 +328,7 @@ df.fit.plot
 
 
 ```{r}
-df.fit.plot  %>% select(parameter,group,sample_size,attempts, sampling_error_3) %>%
+df.fit.plot  %>% select(parameter,fit,group,sample_size,attempts, sampling_error_3) %>%
   spread(key="group", value = "sampling_error_3") %>% arrange(sample_size) %>%
   
   
@@ -338,7 +338,7 @@ df.fit.plot  %>% select(parameter,group,sample_size,attempts, sampling_error_3) 
   geom_jitter() +
   
   labs() +
-  #facet_wrap(.~attempts, scales = "free") + 
+  facet_grid(parameter~fit, scales = "free") + 
   ggtitle("Sampling Error of Each Item")
 
 ```
