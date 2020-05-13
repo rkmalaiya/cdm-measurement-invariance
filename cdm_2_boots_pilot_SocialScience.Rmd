@@ -21,8 +21,8 @@ source('calculate_parameters.R')
 options(max.print=100)
 
 
-df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv") %>% mutate_all(as.integer)
-df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv") %>% mutate_all(as.integer)
+df.X <- read_csv("..\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
+df.Q <- read_csv("..\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
 
 
 X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
@@ -43,6 +43,9 @@ Q <- as.data.frame(Q)
 ```{r}
 X 
 ```
+
+
+
 
 ```{r }
 Q
@@ -70,7 +73,7 @@ summary(colSums(!is.na(X)))
 
 # Bootstrap Sample 
 
-Boot requires a custom function that would return row wise stats. In case of dataframe, each row is considered as a multi-variate observation. First parameter of the custom function takes the data input and second parameter takes the importance of data given current bootstrap iteration. stype defines second parameter.
+Boot requires a custom function that would return row wise stats. In case of dataframe, each row is considered as a multi-variate observation. First parameter of the custom function takes the data input and second parameter takes the importance of data given current bootstrap itestudent_question_ration. stype defines second parameter.
 
 
 
@@ -87,7 +90,7 @@ Boot requires a custom function that would return row wise stats. In case of dat
 #model_dina <- gdina(data =  data.ecpe$data[,-1] , q.matrix =  data.ecpe$q.matrix, maxit = 10, rule = "GDINA2")
 
 model_dina <- din(data = X, q.matrix =  Q, progress = FALSE)
-
+model_dina
 ```
 
 
@@ -96,8 +99,8 @@ model_dina <- din(data = X, q.matrix =  Q, progress = FALSE)
 
 ```{r}
 # Let's suffle X
-X <- X %>% sample_frac(1)
-
+X <- X %>% sample_frac(20, replace = TRUE)
+dim(X)
 #Divide X to 2 parts
 X.p1 <- X %>% head(round(dim(X)[1]/2))
 X.p2 <- X %>% tail(round(dim(X)[1]/2))
@@ -114,7 +117,7 @@ t_cdm[1,]
 ```
 
 
-```{r}
+```{r warning=FALSE}
 
 df.t <- get_sample_sizes(dim(X.p1)[1], dim(X.p1)[2])
 
@@ -127,11 +130,12 @@ df.t <- get_mean_sample_error(X.p1, X.p2, Q, sample_sizes[1], student_question_r
 
 df.error <- df.t[[1]]
 df.error.agg <- df.t[[2]]
+df.error.fit <- df.t[[3]]
 
 ```
 
 
-```{r}
+```{r warning=FALSE}
 
 for(i in 2:length(sample_sizes)) {
   
@@ -139,7 +143,8 @@ for(i in 2:length(sample_sizes)) {
   
   df.error.t <- df.t[[1]]
   df.error.agg.t <- df.t[[2]]
-
+  df.error.fit.t <- df.t[[3]]
+ 
   df.error <- df.error %>% union(
     
     df.error.t
@@ -150,6 +155,11 @@ for(i in 2:length(sample_sizes)) {
     df.error.agg.t
   )
   
+  df.error.fit <- df.error.fit %>% union(
+    
+    df.error.fit.t
+  )  
+  
 }
 
 #debugonce(get_mean_sample_error)
@@ -157,29 +167,32 @@ for(i in 2:length(sample_sizes)) {
 ```
 
 ```{r}
-write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_socialscience.rds")
+write_rds(df.error, "..\\data\\FirstYearProject\\df_error_socialscience.rds")
 
-write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_socialscience.rds")
-```
+write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_socialscience.rds")
 
-
-```{r}
-df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_socialscience.rds")
-
-df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_error_agg_socialscience.rds")
-
+write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_socialscience.rds")
 
 ```
 
 
+```{r}
+df.error <- read_rds("..\\data\\FirstYearProject\\df_error_socialscience.rds")
+
+df.error.agg <- read_rds("..\\data\\FirstYearProject\\df_error_agg_socialscience.rds")
+
+df.error.fit <- read_rds("..\\data\\FirstYearProject\\df_error_fit_socialscience.rds")
+```
+
+
 
 ```{r}
-df.error <- df.error %>% arrange(sample_size, questions) %>% mutate(ratio = factor(ratio, levels = as.character(unique(ratio)), ordered = TRUE  ))
+df.error <- df.error %>% arrange(sample_size, questions) %>% mutate(student_question_ratio = factor(student_question_ratio, levels = as.character(unique(student_question_ratio)), ordered = TRUE  ))
 df.error
 ```
 
 ```{r}
-df.error.agg <- df.error.agg %>% arrange(sample_size, parameter, group) %>% mutate(ratio = factor(ratio, levels = as.character(unique(ratio)), ordered = TRUE  ))
+df.error.agg <- df.error.agg %>% arrange(sample_size, parameter, group) %>% mutate(student_question_ratio = factor(student_question_ratio, levels = as.character(unique(student_question_ratio)), ordered = TRUE  ))
 df.error.agg
 ```
 
@@ -197,9 +210,9 @@ df.error.plot
 
 df.error.agg %>% 
   ggplot() + 
-  aes(x=ratio, y=sampling_error_mean, color = group, fill = group, group = group) +
+  aes(x=student_question_ratio, y=sampling_error_mean, color = group, fill = group, group = group) +
   geom_line() +
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item student_question_ratio") +
   facet_wrap(parameter~.)
 
 ```
@@ -209,9 +222,9 @@ df.error.agg %>%
 
 df.error %>% 
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_boxplot(alpha = 0.4) +
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item student_question_ratio") +
   facet_wrap(parameter~.)
 
 
@@ -221,12 +234,12 @@ df.error %>%
 
 df.error.plot %>% 
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_violin(alpha = 0.6, trim = FALSE, color = "white") +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1) + 
   
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item student_question_ratio") +
   facet_grid(parameter~group)
 
 ```
@@ -236,12 +249,12 @@ df.error.plot %>%
 
 df.error.plot %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_jitter(alpha = 0.09, width = 0.15) +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1) + 
   
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item student_question_ratio") +
   facet_grid(parameter~group) + 
   ggtitle("Sampling Error of Each Item")
 
@@ -251,12 +264,12 @@ df.error.plot %>%
 
 df.error.plot %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_point(aes(color = group),alpha = 0.2, position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.2)) +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1) + 
   
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item student_question_ratio") +
   facet_grid(parameter~.) + 
   ggtitle("Sampling Error of Each Item")
 
@@ -264,14 +277,14 @@ df.error.plot %>%
 
 ```{r}
 
-df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, ratio) %>% 
+df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, student_question_ratio) %>% 
   spread(key="group", value = "sampling_error_mean") %>%
   
   ggplot() + 
   aes(x=`Partition 1`, y=`Partition 2`, group = 1) +
   geom_line() +
   
-  labs(x="Student to Item Ratio") +
+  labs(x="Student to Item student_question_ratio") +
   facet_grid(.~parameter) + 
   ggtitle("Sampling Error of Each Item")
 
@@ -296,11 +309,44 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
 ```
 
 ```{r}
+df.fit.plot <- df.error.fit  %>% select(parameter, group, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
+  mutate(sampling_error_3= round(sampling_error,3),
+         attempts_bin = cut(attempts, breaks = c(0,10,20,30,40,50,100, max(attempts)), right = TRUE, ordered_result = TRUE)
+         )
 
-write_rds(model_fit, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_socialscience.rds")
+df.fit.plot 
+```
 
-model_fit <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\df_model_fit_socialscience.rds")
 
-model_fit
+```{r}
+df.fit.plot  %>% select(parameter,group,sample_size,attempts, sampling_error_3) %>%
+  spread(key="group", value = "sampling_error_3") %>% arrange(sample_size) %>%
+  
+  
+  
+  ggplot() + 
+  aes(x=`Partition 1`, y=`Partition 2`, color=attempts) +
+  geom_jitter() +
+  
+  labs() +
+  #facet_wrap(.~attempts, scales = "free") + 
+  ggtitle("Sampling Error of Each Item")
 
 ```
+
+```{r}
+df.fit.plot  %>% 
+  arrange(sample_size) %>%
+  
+  
+  
+  ggplot() + 
+  aes(x=attempts_bin, y=sampling_error, fill=group) +
+  geom_col() +
+  
+  labs() +
+  facet_grid(parameter~group, scales = "free") + 
+  ggtitle("Sampling Error of Model fit")
+
+```
+

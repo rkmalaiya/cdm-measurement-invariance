@@ -91,7 +91,7 @@ Boot requires a custom function that would return row wise stats. In case of dat
 #model_dina <- gdina(data =  data.ecpe$data[,-1] , q.matrix =  data.ecpe$q.matrix, maxit = 10, rule = "GDINA2")
 
 model_dina <- din(data = X, q.matrix =  Q, progress = FALSE)
-
+model_dina
 ```
 
 
@@ -132,6 +132,7 @@ df.t <- get_mean_sample_error(X.p1, X.p2, Q, sample_sizes[1], student_question_r
 
 df.error <- df.t[[1]]
 df.error.agg <- df.t[[2]]
+df.error.fit <- df.t[[3]]
 
 ```
 
@@ -144,6 +145,7 @@ for(i in 2:length(sample_sizes)) {
   
   df.error.t <- df.t[[1]]
   df.error.agg.t <- df.t[[2]]
+  df.error.fit.t <- df.t[[3]]
 
   df.error <- df.error %>% union(
     
@@ -155,27 +157,36 @@ for(i in 2:length(sample_sizes)) {
     df.error.agg.t
   )
   
+  df.error.fit <- df.error.fit %>% union(
+    
+    df.error.fit.t
+  )
+  
 }
 
 #debugonce(get_mean_sample_error)
 
 ```
 
-```{r}
-write_rds(df.error, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_ecpe.rds")
 
-write_rds(df.error.agg, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
+
+```{r}
+write_rds(df.error, "..\\data\\FirstYearProject\\df_error_ecpe.rds")
+
+write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
+
+write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_ecpe.rds")
 ```
 
 
 ```{r}
-df.error <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_ecpe.rds")
+df.error <- read_rds("..\\data\\FirstYearProject\\df_error_ecpe.rds")
 
-df.error.agg <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
+df.error.agg <- read_rds("..\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
 
+df.error.fit <- read_rds("..\\data\\FirstYearProject\\df_error_fit_ecpe.rds")
 
 ```
-
 
 
 ```{r}
@@ -202,7 +213,7 @@ df.error.plot
 
 df.error.agg %>% 
   ggplot() + 
-  aes(x=ratio, y=sampling_error_mean, color = group, fill = group, group = group) +
+  aes(x=student_question_ratio, y=sampling_error_mean, color = group, fill = group, group = group) +
   geom_line() +
   labs(x="Student to Item Ratio") +
   facet_wrap(parameter~.) + ggpubr::theme_pubr()
@@ -214,7 +225,7 @@ df.error.agg %>%
 
 df.error %>% 
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_boxplot(alpha = 0.4) +
   labs(x="Student to Item Ratio") +
   facet_wrap(parameter~.) + ggpubr::theme_pubr() + 
@@ -227,7 +238,7 @@ df.error %>%
 
 df.error.plot %>% 
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_violin(alpha = 0.6, trim = FALSE, color = "white") +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1) + 
@@ -242,7 +253,7 @@ df.error.plot %>%
 
 df.error.plot %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_jitter(alpha = 0.09, width = 0.15) +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1) + 
@@ -258,7 +269,7 @@ df.error.plot %>%
 
 df.error.plot %>%
   ggplot() + 
-  aes(x=ratio, y=sampling_error, fill = group) +
+  aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_point(aes(color = group),alpha = 0.2, position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.29), show.legend = FALSE) +
   geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
   geom_point(aes(y=sampling_error_mean), size = 1, show.legend = FALSE) + 
@@ -273,7 +284,7 @@ df.error.plot %>%
 
 ```{r}
 
-df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, ratio) %>% 
+df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, student_question_ratio) %>% 
   spread(key="group", value = "sampling_error_mean") %>%
   
   ggplot() + 
@@ -307,12 +318,44 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
 # Model Fit
 
 ```{r}
+df.fit.plot <- df.error.fit  %>% select(parameter, group, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
+  mutate(sampling_error_3= round(sampling_error,3),
+         attempts_bin = cut(round(attempts), breaks = 6, right = TRUE, ordered_result = TRUE)
+         )
 
-write_rds(model_fit, "C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_model_fit_ecpe.rds")
+df.fit.plot 
+```
 
-model_fit <- read_rds("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\df_model_fit_ecpe.rds")
 
-model_fit
+```{r}
+df.fit.plot  %>% select(parameter,group,sample_size,attempts, sampling_error_3) %>%
+  spread(key="group", value = "sampling_error_3") %>% arrange(sample_size) %>%
+  
+  
+  
+  ggplot() + 
+  aes(x=`Partition 1`, y=`Partition 2`, color=attempts) +
+  geom_jitter() +
+  
+  labs() +
+  #facet_wrap(.~attempts, scales = "free") + 
+  ggtitle("Sampling Error of Each Item")
+
+```
+
+```{r}
+df.fit.plot  %>% 
+  arrange(sample_size) %>%
+  
+  
+  
+  ggplot() + 
+  aes(x=attempts_bin, y=sampling_error, fill=group) +
+  geom_col() +
+  
+  labs() +
+  facet_grid(parameter~group, scales = "free") + 
+  ggtitle("Sampling Error of Model fit")
 
 ```
 

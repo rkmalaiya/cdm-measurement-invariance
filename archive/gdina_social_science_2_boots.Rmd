@@ -18,8 +18,8 @@ library(stringr)
 ```{r}
 rm(list = ls())
 
-df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\X.csv") %>% mutate_all(as.integer)
-df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\PhD\\FirstYearProject\\data\\Q.csv") %>% mutate_all(as.integer)
+df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
+df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
 
 X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
 Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
@@ -70,6 +70,8 @@ Q <- as.data.frame(Q)
 #model_dina <- gdina(data =  data.ecpe$data[,-1] , q.matrix =  data.ecpe$q.matrix, maxit = 10, rule = "GDINA2")
 
 model_dina <- gdina(data = X, q.matrix =  Q, maxit = 10, rule = "GDINA1")
+
+model_dina
 
 ```
 

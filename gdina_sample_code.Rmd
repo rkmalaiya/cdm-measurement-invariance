@@ -4,7 +4,8 @@ output: html_notebook
 ---
 
 ```{r}
-library(CDM) 
+library(CDM)
+library(GDINA) 
 library(BIFIEsurvey)
 ```
 
@@ -17,59 +18,63 @@ timss.info <- data.timss11.G4.AUT.part$data
 timssq <- data.timss11.G4.AUT.part$q.matrix1
 # Response data 11 
 timss <- timss.info[,paste(timssq$item)]
+```
 
+
+```{r}
 # Model including all students for calibration of item parameters 14 
-timss.all <- gdina(timss, timssq[,-1], progress = FALSE, rule = "GDINA1")
+timss.est <- GDINA::GDINA(timss, timssq[,-1])
+```
+
+```{r}
+Qv2 <- Qval(timss.est,method = "Wald")
+Qv2
+```
+
+```{r}
+plot(Qv2, item = 9)
+```
+
+```{r}
+Qv <- Qval(timss.est)
+Qv
+```
+
+```{r}
+
+plot(Qv, item = 9)
+
+```
+
+```{r}
+mc <- modelcomp(timss.est)
+mc
+```
+
+```{r}
+mft <- modelfit(timss.est)
+mft
 ```
 
 
 ```{r}
-# listwise form of item parameters for input in multiple group model 17 
-param.all <- split(coef(timss.all)$est, coef(timss.all)$itemno)
-timss.all$coef
+ift <- itemfit(timss.est)
+ift
 ```
 
 
 ```{r}
-# Multigroup model with invariant item parameters between groups 20 
-timss.mg <- gdina(timss, timssq[,-1], weights=timss.info$TOTWGT, group=timss.info$ female+1, delta.fixed=param.all)
-
-# Generate replicate design for calculation of SEs (requires BIFIEsurvey) 23 
-repdes <- IRT.repDesign(data=timss.info, wgt="TOTWGT", jktype="JK_TIMSS", jkzone=" JKCZONE", jkrep="JKCREP")
-
-
-
-# Calculate SEs and define object param including modelparameters 26 
-jtimss.mg <- IRT.jackknife(timss.mg, repDesign=repdes)
-param.mg <- jtimss.mg$jpartable
-
-# Skill possession (Q1) of and between groups (group1=boys, group2=girls) 30 
-skill.dist <- param.mg[which(param.mg$partype=="margprobs"),] 
-skill.dist.boy <- skill.dist[grep("lev1_group1", skill.dist$parnames),] 
-skill.dist.girl <- skill.dist[grep("lev1_group2", skill.dist$parnames),] 
-skill.dist.diff <- skill.dist.boy$value - skill.dist.girl$value
+summary(ift)
 ```
 
 
 ```{r}
-# Define derived parameters (differences in skill possession between boys and girls ) for calculating their SEs  
-dp <- list( 
-  "skilldiffDA" = ~ 0 + I(prob_skillCo_DA_lev1_group1 - prob_skillCo_DA_lev1_group2), 
-  "skilldiffDK" = ~ 0 + I(prob_skillCo_DK_lev1_group1 - prob_skillCo_DK_lev1_group2), 
-  "skilldiffNR" = ~ 0 + I(prob_skillCo_NR_lev1_group1 - prob_skillCo_NR_lev1_group2) 
-  )
+plot(ift)
 ```
 
 
 ```{r}
-# Calculate SEs of drived parameters (differences between groups) 
-jtimssmg_dp <- IRT.derivedParameters(jtimssmg, derived.parameters=dp) 
-diffs <- summary(jtimssmg_dp)
-
-# Test differences for beeing significantly different from zero 
-diffs$t <- diffs$value / diffs $jkse 
-diffs$sig <- " " 
-diffs$sig[1-pnorm(abs(diffs$t)) < 0.025] <- "*"
-
+CA(timss.est)
 ```
+
 
