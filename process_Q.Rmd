@@ -24,7 +24,7 @@ library(stringr)
 
 rm(list = ls())
 
-Q_from_book <- read_csv("data/final_result_similar.csv")
+Q_from_book <- read_csv("../data//FirstYearProject/final_result_similar.csv")
 
 glimpse(Q_from_book)
 
@@ -40,8 +40,8 @@ Q_from_book
 
 
 ```{r}
-
-learning_obj <- Q_from_book %>% distinct(`Learning Objective`) %>% mutate(lo_id = row_number())
+#, `Skill Level`, `Difficulty Level` 
+learning_obj <- Q_from_book %>% distinct(`Skill Level`, `APA Learning Objective`) %>% mutate(lo_id = row_number())
 learning_obj
 
 ```
@@ -50,7 +50,7 @@ learning_obj
 ```{r}
 
 
-Q_pre <- Q_from_book %>% inner_join(learning_obj) %>% select(Question, `Learning Objective`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
+Q_pre <- Q_from_book %>% inner_join(learning_obj) %>% select(Question, `Skill Level`, `Difficulty Level`, lo_id) %>% mutate(temp = str_trim(str_replace_all(Question, "_|\\.", "")))
 Q_pre
 
 ```
@@ -58,14 +58,14 @@ Q_pre
 
 ```{r}
 
-Q.distinct.id <- read_csv("data/Q_distinct_id.csv") 
+Q.distinct.id <- read_csv("../data/FirstYearProject/Q_distinct_id.csv") 
 
 Q.distinct.id <- Q.distinct.id %>% mutate(temp = str_trim(str_replace_all(value, "_|\\.", "")))
 Q.distinct.id
 ```
 
 
-
+# Work on this line
 ```{r}
 
 Q_pre %>% inner_join(Q.distinct.id, by = "temp") 

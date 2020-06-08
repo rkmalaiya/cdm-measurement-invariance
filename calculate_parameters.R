@@ -79,7 +79,7 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
   Q_names <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(key)
   
   df.X.p1 <- X.p1.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
-    semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id)
+    semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id) # To select items available in Q matrix, because some students in smaller sample may never have answered 
   df.X.p2 <- X.p2.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
     semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id)
   
@@ -89,10 +89,10 @@ get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
               "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
   
   print("Starting Boot for Partition 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
+  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 500, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
   
   print("Starting Boot for Partition 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 10, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
+  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 500, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
 
   question_size = dim(Q_reduced)[1]
   sqr = round(dim(df.X.p1)[1] / dim(df.X.p1)[2] ,1)

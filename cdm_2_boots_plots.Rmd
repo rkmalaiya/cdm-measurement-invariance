@@ -1,10 +1,16 @@
 ---
 title: "Plots to publish"
 output:
-  html_document:
-    df_print: paged
+  pdf_document: 
+    fig_height: 8
+    fig_width: 14
   html_notebook: default
-  word_document: default
+  word_document: 
+    fig_height: 8
+    fig_width: 14
+  html_document: 
+    fig_height: 8
+    fig_width: 14
 ---
 
 
@@ -59,6 +65,7 @@ df.error.ti.plot
 
 ```
 
+
 ```{r}
 df.error.ss <- read_rds("..\\data\\FirstYearProject\\report\\df_error_upsample_socialscience.rds")
 
@@ -81,7 +88,7 @@ df.error.ss.plot
 df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>%
   mutate(ratio_n = student_question_ratio) %>%
   mutate(student_question_ratio = factor(student_question_ratio, levels = sort(unique(as.numeric(student_question_ratio))), ordered = TRUE)) %>%
-  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology (Upsample)"))) %>%
+  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology (UpSampled)"))) %>%
   mutate(questions = factor(questions)) %>% 
   group_by(dataset, group, parameter, sample_size) %>%
   mutate(question_n = n(), qsr = round(n()/sample_size)) %>% 
