@@ -53,7 +53,7 @@ Q
 
 ```{r}
 #n=dim(X)[1]
-#X <- X %>% sample_n(size = n, replace = FALSE)
+X <- X %>% sample_frac(5, replace = TRUE)
 ```
 
 ```{r}
@@ -160,21 +160,21 @@ for(i in 2:length(sample_sizes)) {
 ```
 
 ```{r}
-write_rds(df.error, "..\\data\\FirstYearProject\\df_error_socialscience.rds")
+write_rds(df.error, "..\\data\\FirstYearProject\\df_error_upsample_socialscience.rds")
 
-write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_socialscience.rds")
+write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_upsample_socialscience.rds")
 
-write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_socialscience.rds")
+write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_upsample_socialscience.rds")
 
 ```
 
 
 ```{r}
-df.error <- read_rds("..\\data\\FirstYearProject\\df_error_socialscience.rds")
+df.error <- read_rds("..\\data\\FirstYearProject\\df_error_upsample_socialscience.rds")
 
-df.error.agg <- read_rds("..\\data\\FirstYearProject\\df_error_agg_socialscience.rds")
+df.error.agg <- read_rds("..\\data\\FirstYearProject\\df_error_agg_upsample_socialscience.rds")
 
-df.error.fit <- read_rds("..\\data\\FirstYearProject\\df_error_fit_socialscience.rds")
+df.error.fit <- read_rds("..\\data\\FirstYearProject\\df_error_fit_upsample_socialscience.rds")
 ```
 
 

@@ -1,17 +1,20 @@
 
 library(janitor)
 
+
+n_boot = 5
+
 get_sample_sizes <- function(dim.students, dim.questions) {
   
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c( 0.3, 0.4, 0.5,1,2,5, 10, 15) #0.1, 0.2,   
+  student_question_ratios = c( 0.3, 0.4, 0.5,1,2,4, 6, 8, 10, 12) #0.1, 0.2,   
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
   
-  sample_sizes <- sample_sizes[allow_sizes]
+  #sample_sizes <- sample_sizes[allow_sizes]
   student_question_ratio_all <- student_question_ratios[allow_sizes]
   
   sample_sizes <- c(sample_sizes, dim.students)
@@ -25,146 +28,201 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   return(list(ratio = student_question_ratios, sample_size = sample_sizes))
 }
 
-total_cdm_fn <- function(df, i = 1:dim(df)[1], Q_reduced, sample_size = -1) {
+### Bootstrapping (without replacement) 
+get_parameter_estimates <- function(df.X.p2,Q_reduced, group = "Group", Q_names) {
+  
+  df.cdm <- CDM::din(df.X.p2, Q_reduced, progress=FALSE)
+  
+  fit <- IRT.modelfit(df.cdm)
+  
+  df.p2.t1 <- tibble("value" = df.cdm$slip$est, 
+                     "key" = Q_names) %>% 
+    spread(key = "key", value = "value") %>%
+    select(!!!Q_names) %>% 
+    mutate(parameter = "Slip", group = group, type = "item") %>% 
+    gather(key = "entities", value = "value", -group, -parameter, -type)
+  
+  
+  
+  
+  df.p2.t2 <- tibble("value" = df.cdm$guess$est, 
+                     "key" = Q_names) %>% 
+    spread(key = "key", value = "value") %>% 
+    select(!!!Q_names) %>% 
+    mutate(parameter = "Guess", group =group, type = "item")  %>% 
+    gather(key = "entities", value = "value", -group, -parameter, -type)
+  
+  
+  #Item Parameters
+  df.p2.t <- rbind(df.p2.t1, df.p2.t2) 
+  
+  # Fit Parameters
+  df.p2.fit1 <- data.frame(model_fit = fit$modelfit.stat['SRMSR',] 
+  ) %>% mutate(parameter = "SRMSR", type = "fit_val", group = group) %>% 
+    gather(key = "entities", value = "value", -group, -parameter, -type)
+  
+  df.p2.fit2 <- data.frame(
+    model_fit = fit$modelfit.test[1,2]
+    
+  ) %>% mutate(parameter = "CHI_SQR", type = "fit_val", group = group) %>% 
+    gather(key = "entities", value = "value", -group, -parameter, -type)
+  
+  
+  df.p2.fit3 <- data.frame( model_fit = fit$modelfit.test[1,3] 
+  ) %>% mutate(parameter = "CHI_SQR", type = "p_val", group = group) %>% 
+    gather(key = "entities", value = "value", -group, -parameter, -type)
+  
+  
+  
+  df.p2.fit <- rbind(df.p2.fit1, df.p2.fit2, df.p2.fit3) 
+  
+  
+  
+  #"sqr" = round(dim(df.X.p1)[1] / dim(df.X.p1)[2] ,1))
+  
+  
+  # Combining all results together
+  df.sim <- rbind(df.p2.t, df.p2.fit)
+  
+  return (df.sim)
+  
+}
+
+# This function would partition data into 2 sub-populations and calculation DINA for each sub-population
+cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) {
   
   #print(dim(df))
   #browser()
   #df.t <- X
   #Q_reduced = Q
   
-  df.t <- df[i,]
+  X <- df[i,]
+  X.s <- head(X, sample_size) # Taking only 1:sample_size data to create smaller sample from bootstrapped X.
   
-  df.t.s1 <- df.t #%>% select(E1:E28) 
+  X.p1.s <- X.s %>% head(round(dim(X.s)[1]/2)) # Partitition sample into two sub-populations.
+  X.p2.s <- X.s %>% tail(round(dim(X.s)[1]/2))
   
-  ###########################
-  #print(Q_reduced)
-  df.cdm <- CDM::din(df.t.s1, Q_reduced, progress=FALSE)
+  X.p1.s <- X.p1.s %>% remove_empty(.,which = "cols")
+  X.p2.s <- X.p2.s %>% remove_empty(.,which = "cols")
   
-  fit <- IRT.modelfit(df.cdm)
+  # This code helps to remove the questions that has not been answered by both the groups.
+  Q_dist <-  X.p1.s %>% gather() %>% distinct(key) %>% inner_join(
+   ( X.p2.s %>% gather()%>% distinct(key)), by = "key"
+  ) %>% distinct(key)
   
-  df.t1 <- tibble("value" = df.cdm$slip$est, "key" = paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1))) %>% 
-    spread(key = "key", value = "value") %>% 
-    select(!!!paste0("s1_slip_E", seq(1,length(df.cdm$slip$est),1))) 
+  Q_reduced <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(-key)
+  Q_names <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(key)
+  Q_names <- Q_names$key
   
   
-  df.t2 <- tibble("value" = df.cdm$guess$est, "key" = paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1))) %>% 
-    spread(key = "key", value = "value") %>% 
-    select(!!!paste0("s1_guess_E", seq(1,length(df.cdm$guess$est),1))) 
+  df.X.p1 <- X.p1.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
+    semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id) # To select items available in Q matrix, because some students in smaller sample may never have answered 
+  
+  df.X.p2 <- X.p2.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
+    semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id)
+  
+  if(do_print) {
+    print(paste("sample p1:", paste0(dim(df.X.p1),collapse = ","), 
+                "; sample p2:", paste0(dim(df.X.p2), collapse = ","), 
+                "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
+    
+  }  
+  ####################################################################
+  # Calculation Attempts per Question
+  
+  df.attempts <- df.X.p1 %>% 
+    
+    summarise_all(funs(sum((!is.na(.))))) %>% 
+    gather(key="entities", value = "attempts") %>% 
+    mutate(group = "Partition 1") %>% 
+    
+    union (
+    
+      df.X.p2 %>% 
+        summarise_all(funs(sum((!is.na(.))))) %>% 
+        gather(key="entities", value = "attempts") %>% 
+        mutate(group = "Partition 2")   
+  )
+    
   
 
-  df.t <- cbind(df.t1, df.t2) %>% mutate(fit_SRMSR = fit$modelfit.stat['SRMSR',]) %>% mutate(fit_chi_sqr = fit$modelfit.test[1,2], p_chi_sqr = fit$modelfit.test[1,3] )
+  ####################################################################
+  # Estimating parameters for Partition 1
   
-  return(as.matrix(df.t))
+  df.p1 <- get_parameter_estimates(df.X.p1, Q_reduced, "Partition 1", Q_names)
+  
+  ####################################################################
+  # Estimating parameters for Partition 2
+ 
+  df.p2 <- get_parameter_estimates(df.X.p2, Q_reduced, "Partition 2", Q_names)
+  
+  df.data.sim <- rbind(df.p1, df.p2) %>% left_join(df.attempts)
+  
+  # Returning item and model fit statistics for both partitions.
+  return(df.data.sim)
+
   
 } 
 
 
 
 # Need to repeat this block with difference student size in X. 
-sample_size = 0.1
+#sample_size = 0.1
 
-### Bootstrapping (without replacement) samples (with replacement) of different sizes from the same distribution
-get_boots_2 <- function(X.p1, X.p2, Q, sample_size) {
-  X.p1.s <- X.p1 %>% sample_n(sample_size)
-  X.p2.s <- X.p2 %>% sample_n(sample_size)
-  
-  X.p1.s <- X.p1.s %>% remove_empty(.,which = "cols")
-  X.p2.s <- X.p2.s %>% remove_empty(.,which = "cols")
-  
-  Q_dist <-  X.p1.s %>% gather() %>% arrange(key) %>% intersect(
-    X.p2.s %>% gather()
-  ) %>% distinct(key)
-  
-  Q_reduced <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(-key)
-  Q_names <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(key)
-  
-  df.X.p1 <- X.p1.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
-    semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id) # To select items available in Q matrix, because some students in smaller sample may never have answered 
-  df.X.p2 <- X.p2.s %>% mutate(id = row_number()) %>% gather(key = "key", value = "value", -id) %>% 
-    semi_join(Q_dist, by = "key") %>% spread(key = "key", value = "value") %>% select(-id)
-  
-  
-  print(paste("sample p1:", paste0(dim(df.X.p1),collapse = ","), 
-              "; sample p2:", paste0(dim(df.X.p2), collapse = ","), 
-              "Q Reduced:", paste0(dim(Q_reduced), collapse = ",")))
-  
-  print("Starting Boot for Partition 1")
-  X.bt.1 <- boot(data = df.X.p1 , statistic = total_cdm_fn, R = 500, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size) # R needs to be 2 atleast for below code to work correctly
-  
-  print("Starting Boot for Partition 2")
-  X.bt.2 <- boot(data = df.X.p2 , statistic = total_cdm_fn, R = 500, stype = "i", Q_reduced = Q_reduced, sample_size = sample_size)
-
-  question_size = dim(Q_reduced)[1]
-  sqr = round(dim(df.X.p1)[1] / dim(df.X.p1)[2] ,1)
-
-  df.s1_slip <- X.bt.1$t[,1:question_size] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Partition 1", type = "item")
-  df.s1_guess <- X.bt.1$t[,(question_size+1):(ncol(X.bt.1$t) - 3)] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 1", type = "item")
-  #browser()
-  df.s1_SRMSR <- X.bt.1$t[,(ncol(X.bt.1$t)-2):(ncol(X.bt.1$t)-2)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "SRMSR", group = "Partition 1", type = "fit_val")
-  
-  df.s1_chi_sqr_fit <- X.bt.1$t[,(ncol(X.bt.1$t)-1):(ncol(X.bt.1$t)-1)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 1", type = "fit_val")
-  df.s1_chi_sqr_p <- X.bt.1$t[,ncol(X.bt.1$t):ncol(X.bt.1$t)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 1", type = "p_val")
+get_boot_index <- function(X) {
   
   
   
-  df.s2_slip <- X.bt.2$t[,1:question_size] %>%  as_tibble() %>% mutate(parameter = "Slip", group = "Partition 2", type = "item")
-  df.s2_guess <- X.bt.2$t[,(question_size+1):(ncol(X.bt.2$t)-3)] %>% as_tibble() %>% mutate(parameter = "Guess", group = "Partition 2", type = "item")
+  X.bt <- boot(data = X , statistic = function(X, i) return(i), R = n_boot, stype = "i") # R needs to be 2 atleast for below code to work correctly
   
-  df.s2_SRMSR <- X.bt.2$t[,(ncol(X.bt.2$t)-2):(ncol(X.bt.2$t)-2)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "SRMSR", group = "Partition 2", type = "fit_val")
-  
-  df.s2_chi_sqr_fit <- X.bt.1$t[,(ncol(X.bt.2$t)-1):(ncol(X.bt.2$t)-1)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 2", type = "fit_val")
-  df.s2_chi_sqr_p <- X.bt.1$t[,ncol(X.bt.2$t):ncol(X.bt.2$t)] %>% as_tibble() %>% rename(model_fit = value) %>% mutate(parameter = "CHI_SQR", group = "Partition 2", type = "p_val")
-  
-  
-  
-  df.t1 <- df.s1_slip %>% bind_rows(df.s1_guess) %>%  bind_rows(df.s2_slip) %>% bind_rows(df.s2_guess) 
-  col_names <- colnames(df.t1 %>% select(-group, -parameter, -type) ) 
-  
-  
-  
-  df.t1.1 <- df.t1 %>% 
-    
-    gather(key = "entities", value="values", -group, -parameter, -type) %>% 
-    
-    mutate(entities = factor(entities, 
-          labels = Q_names$key,
-          levels = col_names, # All unique values of questions header return by boot function v1:v_
-          ordered = TRUE))
-  
-  df.t2 <- df.s1_SRMSR %>% bind_rows(df.s2_SRMSR) %>% 
-           bind_rows(df.s1_chi_sqr_fit) %>% bind_rows(df.s1_chi_sqr_p) %>%
-           bind_rows(df.s2_chi_sqr_fit) %>% bind_rows(df.s2_chi_sqr_p) %>%
-           gather(key = "entities", value="values", -group, -parameter, -type)
-  
-  df.data.sim <- df.t1.1 %>% bind_rows(df.t2)
-  
-  return(list(df.data.sim,sqr, X.p1.s, X.p2.s))
+  return (X.bt$t %>% as.data.frame())
 }
 
-get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
+
+# This function calculate non-parameter bootstrapped statistics for a given sample size
+get_mean_sample_error <- function(X, Q, sample_size, sqr) {
   
+    print( c("Starting ", n_boot, " bootstrap for sample size:", sample_size) )
   
-    df.t <- get_boots_2(X.p1, X.p2, Q, sample_size)
+    X.bt <- get_boot_index(X) %>% as.data.frame()
+    X.index <- X.bt[1,]  %>% gather() 
+    X.index <- X.index$value
+    
+    
+    df.data.sim = cdm_fn(X, Q, sample_size = sample_size, X.index, do_print = TRUE)
+
+    #browser()
+    for (i_val in 2: nrow(X.bt)) {
+    
+      X.index <- X.bt[i_val,]  %>% gather() 
+      X.index <- X.index$value
+      
+      
+      df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, X.index)
+      
+      df.data.sim = df.data.sim %>% bind_rows(df.data.sim.t)
+    
+    }
+    
+    
+    
+    #df.t <- get_parameter_estimates(X.bt$t)
+    
    
-    df.data.sim <- df.t[[1]]
-    sqr <- df.t[[2]]
+    #df.data.sim <- df.t[[1]]
+    #sqr <- df.t[[2]]
     #Q_names <- df.t[[3]][[1]]
-    df.X.p1 <- df.t[[3]]
-    df.X.p2 <- df.t[[4]]
+    #df.X.p1 <- df.t[[3]]
+    #df.X.p2 <- df.t[[4]]
     
   
+  #browser()
+  df.data.sim.item <- df.data.sim %>% filter(type == "item") %>% select(-type) %>% rename(questions = entities, item_parameters = value)
   
-  df.data.sim.item <- df.data.sim %>% filter(type == "item") %>% select(-type) %>% rename(questions = entities, item_parameters = values)
-  
-  # Stats for Item Parameters
-  df.data <- df.data.sim.item %>% 
+  # Calculating Stats like Mean and Sampling Error for each Item Parameters
+  df.data <- df.data.sim.item %>%
     
-    left_join( 
-      df.X.p1 %>% summarise_all(funs(sum((!is.na(.))))) %>% gather(key="questions", value = "attempts") %>% mutate(group = "Partition 1") %>% union (
-      df.X.p2 %>% summarise_all(funs(sum((!is.na(.))))) %>% gather(key="questions", value = "attempts") %>% mutate(group = "Partition 2")   
-        
-      )
-    ) %>%
+    # e.g. group_by ("Partition 1", "Slip", "Question 1")
     group_by(group, parameter, questions) %>% #Attempts and Groups are same
     summarise( 
       total_count = n(),   # Simulation Count
@@ -181,6 +239,8 @@ get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
     ungroup() %>% 
     mutate(sample_size = sample_size, student_question_ratio = sqr) #dim(df.X.p1)[1])
   
+  
+  # Calculating Stats like Mean and Sampling Error for Overall Item Parameters
   df.data.agg <- df.data %>% 
     
     group_by(group, parameter) %>% 
@@ -193,7 +253,7 @@ get_mean_sample_error <- function(X.p1, X.p2, Q, sample_size, sqr, n_boot) {
   
   #browser()
   # Stats for Fit Parameters
-  df.data.fit <- df.data.sim %>% filter(entities == "model_fit") %>% select(-entities) %>% rename(fit = type, fit_value = values) %>%
+  df.data.fit <- df.data.sim %>% filter(entities == "model_fit") %>% select(-entities) %>% rename(fit = type, fit_value = value) %>%
     group_by(group, parameter, fit) %>%
     summarise( 
      

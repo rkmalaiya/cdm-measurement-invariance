@@ -29,15 +29,19 @@ library(ggrepel)
 ```{r}
 rm(list = ls())
 options(max.print=100)
+#path = "report"
+path = ""
+
+
 ```
 
 
 ```{r}
-df.error.ec <- read_rds("..\\data\\FirstYearProject\\report\\df_error_ecpe.rds")
+df.error.ec <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_ecpe.rds"))
 
-df.error.ec.agg <- read_rds("..\\data\\FirstYearProject\\report\\df_error_agg_ecpe.rds")
+df.error.ec.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_ecpe.rds"))
 
-df.error.ec.fit <- read_rds("..\\data\\FirstYearProject\\report\\df_error_fit_ecpe.rds") %>% mutate(dataset = "ECPE")
+df.error.ec.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_ecpe.rds")) %>% mutate(dataset = "ECPE")
 
 df.error.ec.plot <- df.error.ec %>% inner_join(
   df.error.ec.agg
@@ -50,11 +54,11 @@ df.error.ec.plot
 
 
 ```{r}
-df.error.ti <- read_rds("..\\data\\FirstYearProject\\report\\df_error_timss.rds")
+df.error.ti <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_timss.rds"))
 
-df.error.ti.agg <- read_rds("..\\data\\FirstYearProject\\report\\df_error_agg_timss.rds")
+df.error.ti.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_timss.rds"))
 
-df.error.ti.fit <- read_rds("..\\data\\FirstYearProject\\report\\df_error_fit_timss.rds") %>% mutate(dataset = "TIMSS")
+df.error.ti.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_timss.rds")) %>% mutate(dataset = "TIMSS")
 
 df.error.ti.plot <- df.error.ti %>% inner_join(
   df.error.ti.agg
@@ -65,13 +69,12 @@ df.error.ti.plot
 
 ```
 
-
 ```{r}
-df.error.ss <- read_rds("..\\data\\FirstYearProject\\report\\df_error_upsample_socialscience.rds")
+df.error.ss <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_socialscience.rds"))
 
-df.error.ss.agg <- read_rds("..\\data\\FirstYearProject\\report\\df_error_agg_upsample_socialscience.rds")
+df.error.ss.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_socialscience.rds"))
 
-df.error.ss.fit <- read_rds("..\\data\\FirstYearProject\\report\\df_error_fit_upsample_socialscience.rds") %>% mutate(dataset = "Social Psychology (Upsample)")
+df.error.ss.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_socialscience.rds")) %>% mutate(dataset = "Social Psychology (Upsample)")
 
 df.error.ss.plot <- df.error.ss %>% inner_join(
   df.error.ss.agg
@@ -81,11 +84,26 @@ df.error.ss.plot
 
 ```
 
+```{r}
+df.error.ss.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_upsample_socialscience.rds"))
+
+df.error.ss.agg.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_upsample_socialscience.rds"))
+
+df.error.ss.fit.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_upsample_socialscience.rds")) %>% mutate(dataset = "Social Psychology (Upsample)")
+
+df.error.ss.plot.u <- df.error.ss.u %>% inner_join(
+  df.error.ss.agg.u
+) %>% mutate(dataset = "Social Psychology")
+
+df.error.ss.plot.u
+
+```
+
 # Merge all Data
 
 ```{r}
 
-df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>%
+df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>% bind_rows(df.error.ss.plot.u) %>%
   mutate(ratio_n = student_question_ratio) %>%
   mutate(student_question_ratio = factor(student_question_ratio, levels = sort(unique(as.numeric(student_question_ratio))), ordered = TRUE)) %>%
   mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology (UpSampled)"))) %>%
@@ -219,6 +237,16 @@ df.mean_diff <- df.t  %>% select(parameter, group, questions, sampling_mean, avg
 df.mean_diff %>% arrange(dataset, Z_test, questions, avg_attempts) %>% filter(parameter == "Guess") %>% select(-Z_avg) 
 
 ```
+
+```{r}
+
+t <- df.t  %>% select(parameter, group, questions, sampling_mean, avg_attempts, dataset, sample_size) %>% 
+  spread(key="group", value = "sampling_mean") %>% rename("Partition1_mean" = `Partition 1`, "Partition2_mean" = `Partition 2`) 
+
+t[c(7387, 8326, 9265, 10204, 11143, 12082),]
+
+```
+
 
 # Plots of mean difference
 ```{r}
