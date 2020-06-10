@@ -9,12 +9,12 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c( 0.3, 0.4, 0.5,1,2,4, 6, 8, 10, 12) #0.1, 0.2,   
+  student_question_ratios = c( 0.3, 0.4, 0.5, 1,2,4, 6, 8, 10,  15, 20, 25, 30, 100) #0.1, 0.2,   # Student/Questions
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
   
-  #sample_sizes <- sample_sizes[allow_sizes]
+  sample_sizes <- sample_sizes[allow_sizes]
   student_question_ratio_all <- student_question_ratios[allow_sizes]
   
   sample_sizes <- c(sample_sizes, dim.students)

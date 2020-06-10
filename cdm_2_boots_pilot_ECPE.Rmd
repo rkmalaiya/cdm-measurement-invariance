@@ -51,6 +51,7 @@ X
 Q
 ```
 
+
 ```{r}
 #n=dim(X)[1]
 #X <- X %>% sample_n(size = n, replace = FALSE)
