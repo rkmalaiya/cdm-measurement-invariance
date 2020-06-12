@@ -51,6 +51,16 @@ X
 Q
 ```
 
+
+# Student to Item Ratio
+
+```{r}
+
+dim(X)[1] / dim(X)[2]
+
+```
+
+
 ```{r}
 #n=dim(X)[1]
 #X <- X %>% sample_n(size = n, replace = FALSE)
@@ -112,7 +122,7 @@ model_dina
 
 
 
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 
 df.t <- get_sample_sizes(dim(X)[1], dim(X)[2])
 
@@ -130,7 +140,7 @@ df.error.fit <- df.t[[3]]
 ```
 
 
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 
 for(i in 2:length(sample_sizes)) {
   

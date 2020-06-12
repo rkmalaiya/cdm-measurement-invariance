@@ -2,14 +2,14 @@
 library(janitor)
 
 
-n_boot = 5
+n_boot = 100
 
 get_sample_sizes <- function(dim.students, dim.questions) {
   
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c( 0.3, 0.4, 0.5, 1,2,4, 6, 8, 10,  15, 20, 25, 30, 100) #0.1, 0.2,   # Student/Questions
+  student_question_ratios = c(  0.4, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 50, 100) #0.1, 0.2, 0.3,  # Student/Questions
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5

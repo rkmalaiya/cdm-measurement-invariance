@@ -21,8 +21,8 @@ source('calculate_parameters.R')
 options(max.print=100)
 
 
-df.X <- read_csv("..\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
-df.Q <- read_csv("..\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
+#df.X <- read_csv("..\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
+#df.Q <- read_csv("..\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
 
 
 #X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
@@ -48,10 +48,38 @@ X
 Q
 ```
 
+# Summary of Attempts
+
+## Items administered 
+```{r}
+
+summary(colSums(!is.na(X[1:56,])))
+
+```
+
+## Questions shown to each student
+
+```{r}
+
+X %>% mutate(na_per_row = rowSums(is.na(.[1:47]))) %>% group_by(na_per_row) %>% tally()
+
+
+```
+
+
+# Student to Item Ratio
+
+```{r}
+
+dim(X)[1] / dim(X)[2]
+
+```
+
+
 # Upsampling
 ```{r}
 #n=dim(X)[1]
-X <- X %>% sample_frac(10, replace = TRUE)
+#X <- X %>% sample_frac(10, replace = TRUE)
 ```
 
 ```{r}
@@ -59,13 +87,6 @@ percent_na <- round((sum(is.na(X)) / (dim(X)[1] * dim(X)[2])) * 100,2)
 percent_na
 ```
 
-# Summary of Attempts
-
-```{r}
-
-summary(colSums(!is.na(X)))
-
-```
 
 # Student Performance
 

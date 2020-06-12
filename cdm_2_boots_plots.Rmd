@@ -29,8 +29,8 @@ library(ggrepel)
 ```{r}
 rm(list = ls())
 options(max.print=100)
-#path = "report"
-path = ""
+path = "report"
+#path = ""
 
 
 ```
@@ -62,6 +62,21 @@ df.error.ti.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_err
 
 df.error.ti.plot <- df.error.ti %>% inner_join(
   df.error.ti.agg
+) %>% mutate(dataset = "TIMSS")
+
+
+```
+
+
+```{r}
+df.error.ti.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_upsample_timss.rds"))
+
+df.error.ti.agg.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_upsample_timss.rds"))
+
+df.error.ti.fit.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_upsample_timss.rds")) %>% mutate(dataset = "TIMSS")
+
+df.error.ti.plot.u <- df.error.ti.u %>% inner_join(
+  df.error.ti.agg.u
 ) %>% mutate(dataset = "TIMSS")
 
 
@@ -103,10 +118,10 @@ df.error.ss.plot.u
 df.error.ss.plot.u %>% 
   ggplot() + 
   aes(x = attempts, y = sampling_error) + 
-  facet_wrap(group~.)+
-  geom_col()
+  facet_wrap(group~., scales = "free")+
+  geom_col() + scale_y_continuous(limits = c(0,1))
 
-
+df.error.ss.plot.u %>% group_by(group, round(attempts)) %>% summarise(n=n(), se1 = min(sampling_error), se2 = max(sampling_error))
 
 ```
 
@@ -117,7 +132,10 @@ df.error.ss.plot.u %>%
 
 ```{r}
 
-df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot.u) %>% #bind_rows(df.error.ss.plot) %>% 
+df.error.plot <- df.error.ec.plot %>% 
+  
+  #bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>% 
+  bind_rows(df.error.ti.plot.u) %>% bind_rows(df.error.ss.plot.u) %>% 
   
   mutate(ratio_n = as.numeric(student_question_ratio)) %>%
   
@@ -137,16 +155,16 @@ df.error.plot <- df.error.ec.plot %>% bind_rows(df.error.ti.plot) %>% bind_rows(
   group_by(dataset, parameter, questions, student_question_ratio) %>%
   mutate(attempts_disc_n = round(mean(attempts))) %>% ungroup() %>%
   mutate(attempts_disc = cut(attempts_disc_n, 
-                        breaks = c(0,5,10,15,20,25,30,40,50,60, 100, 200, 400, 800, 1000, max(.$attempts)),
-                        labels = c(5,10,15,20,25,30,40,50,60, 100, 200, 400, 800, 1000, "1000+"),
+                        breaks = c(0,5,10,15,20,25,30,40,50,60, 100, 200, 400, 800, max(.$attempts)),
+                        labels = c(5,10,15,20,25,30,40,50,60, 100, 200, 400, 800, "1000+"),
                         include.lowest = TRUE, right = TRUE, ordered_result = TRUE))  %>%
   
   # Adding upsample column to represent attempts that were generated due to non-parameteric bootstrap upsampling
-  mutate(upsampled = "Original Dataset") %>%
+
   mutate(upsampled = case_when(
-    (dataset == "TIMSS" & attempts_disc_n > 400)  ~ "Upsampled Dataset",
-    (dataset == "Social Psychology" & attempts_disc_n > 15)  ~ "Upsampled Dataset",
-    TRUE ~ "Original Dataset"
+    (dataset == "TIMSS" & attempts > 200)  ~ "Upsampled Attempts", #ratio_n > 21
+    (dataset == "Social Psychology" & attempts > 15)  ~ "Upsampled Attempts", #ratio_n > 0.5
+    TRUE ~ "Original Items"
     
     
   )) %>%
@@ -187,8 +205,8 @@ df.fit.plot <- df.error.ec.fit %>% bind_rows(df.error.ti.fit) %>% bind_rows(df.e
 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_mean, attempts_disc, student_question_ratio, dataset) %>% 
-  spread(key="group", value = "sampling_mean") %>% arrange(attempts_disc) %>% filter(parameter == "Guess") %>%
+df.error.plot %>% select(parameter, group, questions, sampling_error, attempts_disc, student_question_ratio, dataset) %>% 
+  spread(key="group", value = "sampling_error") %>% arrange(attempts_disc) %>% filter(parameter == "Guess") %>%
   
   
   
@@ -204,6 +222,27 @@ df.error.plot %>% select(parameter, group, questions, sampling_mean, attempts_di
   theme(legend.position = "bottom")
 
 ```
+
+```{r}
+
+#df.t <- df.error.plot %>% group_by(parameter, dataset, group, attempts_disc) %>% summarise(outlier_count = length(boxplot.stats(sampling_error)$out), n = n())
+
+
+df.error.plot %>% select(parameter, group, questions, sampling_error, attempts_disc, student_question_ratio, dataset) %>% 
+  ggplot() + 
+  aes(x=attempts_disc, y = sampling_error, color = group)+
+  #geom_boxplot(alpha = 0.3, position = position_dodge()) + 
+  geom_jitter(position = position_dodge(width = 0.5), alpha = 0.035, aes(color = group))+
+  stat_summary(fun.y = mean, geom = "line", aes(group = 1, color = "Mean of Sampling Error"), size =1 ) + 
+  facet_grid(parameter~dataset, scale = "free") +
+  theme_pubclean() + 
+  labs(fill = "", x = "Examinee Attempt Size (EAS) of Item", title = "Sampling Error for each partition", color = "") + 
+  theme(legend.position = "bottom") + #+
+  #geom_text(data = df.t, aes(x=attempts_disc, y = 1.2, label = paste0(round(outlier_count / n,2) * 100, "%"), color = group), position = position_dodge()) 
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+```
+
 
 
 ```{r}
@@ -229,9 +268,9 @@ df.error_diff <- df.error.plot  %>% select(parameter, group, questions, sampling
 # Plots of mean difference
 ```{r}
 
-df.diff <- df.mean_diff %>% group_by(dataset, parameter, attempts_disc) %>% #,attempts, student_question_ratio
+df.diff <- df.mean_diff %>% group_by(dataset, parameter, attempts_disc,upsampled) %>% #,attempts, student_question_ratio
   summarize(
-    mn = median(mean_diff),
+    mn = mean(mean_diff),
     sd = sd(mean_diff),
     min = min(mean_diff),
     max = max(mean_diff),
@@ -250,22 +289,30 @@ df.diff
 
 ```{r}
 
-gg.plot <- df.diff %>% group_by(dataset, parameter)%>% arrange(dataset, parameter, attempts_disc) %>% 
-  mutate(first = first(var)) %>% mutate(diff_from_first = ((var-first)/first) ) %>% 
+df.disp <- df.diff %>% filter(!is.nan(sd)) %>% group_by(dataset, parameter)%>% arrange(dataset, parameter, attempts_disc,upsampled) %>% 
+  mutate(first = first(var)) %>% mutate(diff_from_first = ((var-first)/first)) %>%
+  group_by(upsampled, add = TRUE) %>% mutate(
+                                              diff_from_first_disp = rep(c(FALSE,TRUE), length.out = n())) %>%
+  ungroup() %>% mutate( diff_from_first_disp = ifelse(diff_from_first_disp, paste0(round(diff_from_first*100,2),"%"), NA), 
+                                              )
+
+gg.plot <- df.disp %>%
   
   ggplot() + 
-  aes(x= attempts_disc, y = var) + #avg_attempts
-  geom_line(aes(group = dataset), size = 1.3) + 
-  #geom_point() +
+  aes(x= attempts_disc, y = var, color = upsampled) + #avg_attempts
+  geom_line(aes(group = upsampled), size = 1.3) + 
+  #geom_line(aes(y = mn, group = dataset), size = 1.3, color = "Gray") + 
+  geom_point(size = 3) +
   #geom_col() +
-  facet_grid(dataset~parameter,scales = "free") + 
+  facet_grid(parameter~dataset,scales = "free") + 
   
-  labs(x = "Examinee Attempts on Item", 
-       y = "Variance", 
-       title = "Measure of Spread of Sampling Mean Difference") +
+  labs(x = "Examinee Attempt Size (EAS) of Item", 
+       y = "Percentage Drop in Variance", 
+       title = "Measure of Spread of Sampling Mean Difference",
+       color = "") +
   
-   geom_text_repel(aes(label = paste0(round(diff_from_first*100,2),"%")), size = 3.6, direction = "y") + #round(var,2), ";", 
-  theme_pubclean()
+  geom_label_repel(aes(label = diff_from_first_disp), size = 3.6, direction = "y", color = "black") + #round(var,2), ";", , force = 10, label.padding = 0.15
+  theme_pubclean() + theme(legend.position = "bottom")
 
 gg.plot
 
@@ -274,23 +321,34 @@ gg.plot
 
 ```{r}
 
-df.diff %>% group_by(dataset, parameter)%>% arrange(dataset, parameter, attempts_disc) %>% 
-  mutate(first = first(sd)) %>% mutate(diff_from_first = ((sd-first)/first) ) %>% 
+gg.plot <- df.diff %>% #group_by(dataset, parameter)%>% arrange(dataset, parameter, attempts_disc) %>% 
+  #mutate(first = first(mn)) %>% mutate(diff_from_first = ((mn-first)/first) ) %>% 
   
   ggplot() + 
-  aes(x=attempts_disc, y = sd) + #diff_from_first
-  geom_line(aes(group = dataset)) + 
+  aes(x= attempts_disc, y = mn) + #avg_attempts
+  geom_line(aes(group = dataset), size = 1.3) + 
+ 
   facet_grid(dataset~parameter,scales = "free") + 
   
- labs(x = "Examinee Attempts on Item", 
-       y = "Standard Deviation", 
+  labs(x = "Examinee Attempts on Item", 
+       y = "Mean", 
        title = "Measure of Spread of Sampling Mean Difference") +
   
-  geom_label(aes(label = paste0(round(sd,2), ";", round(diff_from_first*100,2),"%"))) #+ 
-  #scale_y_continuous(labels=scales::percent_format(accuracy = 1))
+   geom_text_repel(aes(label = paste0(round(mn,2))), size = 3.6, direction = "y") + #round(var,2), ";", 
+  theme_pubclean()
+
+gg.plot
+
+```
+
+## Outliers
+
+```{r}
+
 
 
 ```
+
 
 # Item parameter difference between partitions
 
@@ -302,30 +360,51 @@ df.mean_diff
 
 ```{r}
 
+# Known error: SP dataset for 20 attempts is giving null
+#df.t <- df.diff %>% filter(!is.nan(sd))
+
+#df.t <- df.t %>% group_by(dataset, parameter)%>% arrange(dataset, parameter, attempts_disc,upsampled) %>% 
+#  mutate(first = first(var)) %>% mutate(diff_from_first = ((var-first)/first)) %>%
+#  group_by(upsampled, add = TRUE) %>% mutate(
+#                                              diff_from_first_disp = rep(c(FALSE,TRUE), length.out = n())) %>%
+#  ungroup() %>% mutate(
+#                      diff_from_first_disp = ifelse(diff_from_first_disp, paste0(round(diff_from_first*100,2),"%"), NA), 
+#  ) 
+
+#df.t <- df.mean_diff %>% group_by(parameter, dataset, attempts_disc, upsampled) %>% summarise(outlier_count = length(boxplot.stats(mean_diff)$out), n = n())
+
 df.mean_diff %>% #filter(dataset != "Social Psychology") %>%  #mutate(avg_attempts = as.integer(avg_attempts)) %>%
   ggplot() + 
   
   aes(x =attempts_disc, y = mean_diff, color = upsampled) + 
   geom_boxplot() + 
   facet_grid(parameter~dataset, scales = "free") + 
-  labs(title = "Distribution of Difference between Item parameters in 2 sub-populations", x = "Attempts per item", y = "Difference of Sampling Mean", color = "")+ 
-  theme_pubclean() + theme(legend.position = "bottom")
+  labs(title = "Distribution of Difference between Item parameters in 2 sub-populations", x = "Examinee Attempt Size (EAS) of Item", y = "Difference of Sampling Mean", color = "")+ 
+  theme_pubclean() + theme(legend.position = "bottom")  +
+   geom_text(data = df.disp, aes(x=attempts_disc, y = 0.3, label = diff_from_first_disp, color = "Percentage Drop in variance"))   #paste0(round(outlier_count / n,2) * 100, "%")
+
 
 ```
 
 
 ```{r}
 
-df.error_diff %>% #filter(dataset != "Social Psychology") %>% #mutate(avg_attempts = as.integer(avg_attempts)) %>%
+df.t <- df.mean_diff %>% group_by(parameter, dataset, student_question_ratio) %>% summarise(outlier_count = length(boxplot.stats(mean_diff)$out), n = n())
+
+df.mean_diff %>% #filter(dataset != "Social Psychology") %>%  #mutate(avg_attempts = as.integer(avg_attempts)) %>%
   ggplot() + 
   
-  aes(x =attempts_disc, y = error_diff, color = upsampled) + 
+  aes(x =student_question_ratio, y = mean_diff, color = upsampled) + 
   geom_boxplot() + 
   facet_grid(parameter~dataset, scales = "free") + 
-  labs(title = "Distribution of Difference between Item parameters in different sub-population", x = "Attempts per item", y = "Difference of Sampling Error", color = "") + 
-  theme_pubclean() + theme(legend.position = "bottom")
+  labs(title = "Distribution of Difference between Item parameters in 2 sub-populations", x = "Student to Question Ratio (Sample Batches)", y = "Difference of Sampling Mean", color = "")+ 
+  theme_pubclean() + theme(legend.position = "bottom")  +
+  geom_text(data = df.t, aes(x=student_question_ratio, y = 1.2, label = paste0(round(outlier_count / n,2) * 100, "%"), color = "Outlier Percentage"))  
+  
+
 
 ```
+
 
 
 
