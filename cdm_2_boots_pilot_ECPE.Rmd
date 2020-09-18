@@ -128,7 +128,7 @@ df.t <- get_mean_sample_error(X, Q, sample_sizes[1], student_question_ratios[1])
 df.error <- df.t[[1]]
 df.error.agg <- df.t[[2]]
 df.error.fit <- df.t[[3]]
-
+df.data.sim.item <- df.t[[4]]
 ```
 
 
@@ -141,6 +141,7 @@ for(i in 2:length(sample_sizes)) {
   df.error.t <- df.t[[1]]
   df.error.agg.t <- df.t[[2]]
   df.error.fit.t <- df.t[[3]]
+  df.data.sim.item.t <- df.t[[4]]
 
   df.error <- df.error %>% union(
     
@@ -157,6 +158,12 @@ for(i in 2:length(sample_sizes)) {
     df.error.fit.t
   )
   
+  df.data.sim.item <- df.data.sim.item %>% union(
+  
+  df.data.sim.item.t
+  )
+  
+  
 }
 
 #debugonce(get_mean_sample_error)
@@ -171,6 +178,9 @@ write_rds(df.error, "..\\data\\FirstYearProject\\df_error_ecpe.rds")
 write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
 
 write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_ecpe.rds")
+
+write_rds(df.data.sim.item, "..\\data\\FirstYearProject\\df_data_sim_item_ecpe.rds")
+
 ```
 
 
@@ -189,17 +199,10 @@ df.error <- df.error %>% arrange(sample_size, questions)
 df.error
 ```
 
-```{r}
-df.error.agg <- df.error.agg %>% arrange(sample_size, parameter, group)
-df.error.agg
-```
 
 ```{r}
 
-df.error.plot <- df.error %>% inner_join(
-  df.error.agg
-) 
-
+df.error.plot <- df.error 
 df.error.plot
 
 ```
@@ -313,13 +316,24 @@ df.error.plot %>% select(parameter, group, questions, sampling_error, sample_siz
 # Model Fit
 
 ```{r}
-df.fit.plot <- df.error.fit  %>% select(parameter, fit, group, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
+df.fit.plot <- df.error.fit  %>% select(parameter, fit, group, sampling_mean, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
   mutate(sampling_error_3= round(sampling_error,3),
-         attempts_bin = cut(round(attempts), breaks = 6, right = TRUE, ordered_result = TRUE)
+         attempts_bin = cut(round(attempts), breaks = 60, right = TRUE, ordered_result = TRUE)
          )
 
 df.fit.plot 
 ```
+
+```{r}
+df.fit.plot %>% 
+  filter(parameter == "SRMSR") %>%
+  ggplot() + 
+  aes(x=attempts_bin, y=sampling_mean) + 
+  geom_point() + 
+  facet_wrap(group~., scales = "free")
+  
+```
+
 
 
 ```{r}

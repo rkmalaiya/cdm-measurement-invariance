@@ -22,10 +22,21 @@ options(max.print=100)
 
 
 df.X <- read_csv("..\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
+
+#df.X <- read_csv("..\\data\\FirstYearProject\\Exam4Trial1_X.csv") %>% mutate_all(as.integer) %>% bind_rows(
+#  read_csv("..\\data\\FirstYearProject\\Exam4Trial2_X.csv") %>% mutate_all(as.integer)
+#) 
+
 df.Q <- read_csv("..\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
+
+#df.Q <- read_csv("..\\data\\FirstYearProject\\Exam4Trial1_Q.csv") %>% mutate_all(as.integer) %>% bind_rows(
+#  read_csv("..\\data\\FirstYearProject\\Exam4Trial2_Q.csv") %>% mutate_all(as.integer)
+#) %>% distinct_all()
 
 
 X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
+#X = df.X %>% select(-SubjectID) %>% rename_all(function(x) paste0("Q",x))
+
 Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
 X <- as.data.frame(X) 
 Q <- as.data.frame(Q) 
@@ -136,6 +147,7 @@ df.t <- get_mean_sample_error(X, Q, sample_sizes[1], student_question_ratios[1])
 df.error <- df.t[[1]]
 df.error.agg <- df.t[[2]]
 df.error.fit <- df.t[[3]]
+df.data.sim.item <- df.t[[4]]
 
 ```
 
@@ -149,7 +161,8 @@ for(i in 2:length(sample_sizes)) {
   df.error.t <- df.t[[1]]
   df.error.agg.t <- df.t[[2]]
   df.error.fit.t <- df.t[[3]]
- 
+  df.data.sim.item.t <- df.t[[4]]
+  
   df.error <- df.error %>% union(
     
     df.error.t
@@ -165,6 +178,11 @@ for(i in 2:length(sample_sizes)) {
     df.error.fit.t
   )  
   
+  df.data.sim.item <- df.data.sim.item %>% union(
+  
+  df.data.sim.item.t
+  )
+  
 }
 
 #debugonce(get_mean_sample_error)
@@ -177,6 +195,8 @@ write_rds(df.error, "..\\data\\FirstYearProject\\df_error_socialscience.rds")
 write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_socialscience.rds")
 
 write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_socialscience.rds")
+
+write_rds(df.data.sim.item, "..\\data\\FirstYearProject\\df_data_sim_item_socialscience.rds")
 
 ```
 

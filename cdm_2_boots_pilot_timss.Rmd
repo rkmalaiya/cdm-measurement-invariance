@@ -144,6 +144,7 @@ df.t <- get_mean_sample_error(X, Q, sample_sizes[1], student_question_ratios[1])
 df.error <- df.t[[1]]
 df.error.agg <- df.t[[2]]
 df.error.fit <- df.t[[3]]
+df.data.sim.item <- df.t[[4]]
 
 ```
 
@@ -157,7 +158,8 @@ for(i in 2:length(sample_sizes)) {
   df.error.t <- df.t[[1]]
   df.error.agg.t <- df.t[[2]]
   df.error.fit.t <- df.t[[3]]
-
+  df.data.sim.item.t <- df.t[[4]]
+  
   df.error <- df.error %>% union(
     
     df.error.t
@@ -173,6 +175,11 @@ for(i in 2:length(sample_sizes)) {
     df.error.fit.t
   )  
   
+  df.data.sim.item <- df.data.sim.item %>% union(
+  
+  df.data.sim.item.t
+  )
+  
 }
 
 #debugonce(get_mean_sample_error)
@@ -185,6 +192,9 @@ write_rds(df.error, "..\\data\\FirstYearProject\\df_error_timss.rds")
 write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_timss.rds")
 
 write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_timss.rds")
+
+write_rds(df.data.sim.item, "..\\data\\FirstYearProject\\df_data_sim_item_timss.rds")
+
 ```
 
 
@@ -205,59 +215,22 @@ df.error
 ```
 
 ```{r}
-df.error.agg <- df.error.agg %>% arrange(sample_size, parameter, group)
-df.error.agg
+#df.error.agg <- df.error.agg %>% arrange(sample_size, parameter, group)
+#df.error.agg
 ```
 
 ```{r}
 
-df.error.plot <- df.error %>% inner_join(
-  df.error.agg
-) 
+df.error.plot <- df.error #%>% inner_join(
+  #df.error.agg
+#) 
 
 df.error.plot
 
 ```
 
-```{r}
-
-df.error.agg %>% 
-  ggplot() + 
-  aes(x=student_question_ratio, y=sampling_error_mean, color = group, fill = group, group = group) +
-  geom_line() +
-  labs(x="Student to Item Ratio") +
-  facet_wrap(parameter~.)
-
-```
 
 
-```{r}
-
-df.error.plot %>% 
-  ggplot() + 
-  aes(x=student_question_ratio, y=sampling_error, fill = group) +
-  geom_boxplot(alpha = 0.1) +
-  geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1, show.legend = FALSE, alpha = 0.7) + 
-  labs(x="Student to Item Ratio") +
-  facet_wrap(parameter~.)+ ggpubr::theme_pubr() + 
-  labs(fill = "")
-
-
-```
-
-```{r}
-
-df.error.plot %>% 
-  ggplot() + 
-  aes(x=student_question_ratio, y=sampling_error, fill = group) +
-  geom_violin(alpha = 0.6, trim = FALSE, color = "white") +
-  geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
-  geom_point(aes(y=sampling_error_mean), size = 1) + 
-  
-  labs(x="Student to Item Ratio") +
-  facet_grid(parameter~group)
-
-```
 
 
 ```{r}
@@ -266,8 +239,6 @@ df.error.plot %>%
   ggplot() + 
   aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_jitter(alpha = 0.09, width = 0.15) +
-  geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
-  geom_point(aes(y=sampling_error_mean), size = 1) + 
   
   labs(x="Student to Item Ratio") +
   facet_grid(parameter~group) + 
@@ -282,61 +253,32 @@ df.error.plot %>%
   ggplot() + 
   aes(x=student_question_ratio, y=sampling_error, fill = group) +
   geom_point(aes(color = group),alpha = 0.2, position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.2)) +
-  geom_line(aes(y=sampling_error_mean, color = group, group = group), linetype = 1, size = 1) + 
-  geom_point(aes(y=sampling_error_mean), size = 1) + 
-  
+ 
   labs(x="Student to Item Ratio") +
   facet_grid(parameter~.) + 
   ggtitle("Sampling Error of Each Item")
 
 ```
 
-
-
-```{r}
-
-df.error.agg %>% select(parameter, group, sampling_error_mean, sample_size, student_question_ratio) %>% 
-  spread(key="group", value = "sampling_error_mean") %>%
-  
-  ggplot() + 
-  aes(x=`Partition 1`, y=`Partition 2`, group = 1) +
-  geom_line() +
-  
-  labs(x="Student to Item Ratio") +
-  facet_grid(.~parameter) + 
-  ggtitle("Sampling Error of Each Item")
-
-```
-
-
-```{r}
-
-df.error.plot %>% select(parameter, group, questions, sampling_error, sample_size, avg_attempts) %>% 
-  spread(key="group", value = "sampling_error") %>% arrange(sample_size) %>%
-  
-  ggplot() + 
-  aes(x=`Partition 1`, y=`Partition 2`, color = avg_attempts) +
-  geom_point() +
-  
-  labs(x="Student to Item Ratio") +
-  facet_grid(parameter~avg_attempts, scales = "free") + 
-  ggtitle("Sampling Error of Each Item")
-
-
-
-
-
-```
-
 # Model Fit
 
 ```{r}
-df.fit.plot <- df.error.fit  %>% select(parameter, fit, group, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
+df.fit.plot <- df.error.fit  %>% select(parameter, fit, group, sampling_mean, sampling_error, sample_size, attempts) %>% arrange(attempts, sample_size) %>% 
   mutate(sampling_error_3= round(sampling_error,3),
-         attempts_bin = cut(round(attempts), breaks = 6, right = TRUE, ordered_result = TRUE)
+         attempts_bin = cut(round(attempts), breaks = 30, right = TRUE, ordered_result = TRUE)
          )
 
 df.fit.plot 
+```
+
+```{r}
+df.fit.plot %>% 
+  filter(parameter == "SRMSR") %>%
+  ggplot() + 
+  aes(x=attempts_bin, y=sampling_mean) + 
+  geom_point() + 
+  facet_wrap(group~., scales = "free")
+  
 ```
 
 

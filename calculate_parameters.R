@@ -9,7 +9,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c(  0.4, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 50, 100) #0.1, 0.2, 0.3,  # Student/Questions
+  student_question_ratios = c(0.4, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 50, 100) #0.1, 0.2, 0.3,  # Student/Questions
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
@@ -189,7 +189,7 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
     X.index <- X.index$value
     
     
-    df.data.sim = cdm_fn(X, Q, sample_size = sample_size, X.index, do_print = TRUE)
+    df.data.sim = cdm_fn(X, Q, sample_size = sample_size, X.index, do_print = TRUE) %>% mutate(sim_no = 1)
 
     #browser()
     for (i_val in 2: nrow(X.bt)) {
@@ -198,32 +198,23 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
       X.index <- X.index$value
       
       
-      df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, X.index)
+      df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, X.index)  %>% mutate(sim_no = i_val)
       
       df.data.sim = df.data.sim %>% bind_rows(df.data.sim.t)
     
-    }
+    } # Gathering data for all sample sizes
+
     
-    
-    
-    #df.t <- get_parameter_estimates(X.bt$t)
-    
-   
-    #df.data.sim <- df.t[[1]]
-    #sqr <- df.t[[2]]
-    #Q_names <- df.t[[3]][[1]]
-    #df.X.p1 <- df.t[[3]]
-    #df.X.p2 <- df.t[[4]]
-    
-  
   #browser()
-  df.data.sim.item <- df.data.sim %>% filter(type == "item") %>% select(-type) %>% rename(questions = entities, item_parameters = value)
+  df.data.sim.item <- df.data.sim %>% filter(type == "item") %>% 
+    select(-type) %>% rename(questions = entities, item_parameters = value) %>% 
+    mutate(sample_size = sample_size, student_question_ratio = sqr)
   
-  # Calculating Stats like Mean and Sampling Error for each Item Parameters
+  # Calculating Stats like Mean and Sampling Error for each Item Parameter in both subpopulations in a given sample
   df.data <- df.data.sim.item %>%
     
-    # e.g. group_by ("Partition 1", "Slip", "Question 1")
-    group_by(group, parameter, questions) %>% #Attempts and Groups are same
+    # e.g. group_by ("Partition 1", "Slip", Question 1"). this function is called for single sample size value only
+    group_by(group, parameter, questions, sample_size, student_question_ratio) %>% 
     summarise( 
       total_count = n(),   # Simulation Count
       #na_count = sum(is.na(item_parameters)),
@@ -231,16 +222,17 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
       sampling_mean = mean(item_parameters), 
       sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
       sampling_variance = sampling_error^2,
-      
-      attempts = mean(attempts)
+
+      attempts = mean(attempts) # To average out attempts across simulations.
       
     ) %>% 
+    #mutate(sample_size = sample_size, student_question_ratio = sqr) %>% 
     
-    ungroup() %>% 
-    mutate(sample_size = sample_size, student_question_ratio = sqr) #dim(df.X.p1)[1])
+    ungroup()  #dim(df.X.p1)[1])
   
   
-  # Calculating Stats like Mean and Sampling Error for Overall Item Parameters
+  # Calculating Stats like Mean and Sampling Error for Overall Item Parameters in both subpopulations in a given sample.
+  #df.data.agg <- NA
   df.data.agg <- df.data %>% 
     
     group_by(group, parameter) %>% 
@@ -264,6 +256,6 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
       df.data %>% distinct(group, attempts)
       )
   
-  return(list(df.data,df.data.agg, df.data.fit))
+  return(list(df.data,df.data.agg, df.data.fit, df.data.sim.item))
   
 }
