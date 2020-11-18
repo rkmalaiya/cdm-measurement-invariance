@@ -1,18 +1,24 @@
 ---
 title: "Plots to publish"
 output:
-  pdf_document: 
+  html_document: 
     fig_height: 8
     fig_width: 14
   html_notebook: default
   word_document: 
     fig_height: 8
     fig_width: 14
-  html_document: 
+  pdf_document: 
     fig_height: 8
     fig_width: 14
 ---
 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
 
 ```{r}
 library(ggplot2)
@@ -29,73 +35,73 @@ library(latex2exp)
 library(ggsci)
 ```
 
+
 ```{r}
 rm(list = ls())
 options(max.print=100)
-path = "report"
-#path = ""
+#path = "report"
+path = ""
 
 
 ```
 
 
 ```{r}
-df.error.ec <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_ecpe.rds"))
+df.bagged.ec <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_ecpe.rds"))
 
-df.error.ec.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_ecpe.rds"))
+df.bagged.ec.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_ecpe.rds")) #Bagged-AB
 
-df.error.ec.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_ecpe.rds")) %>% mutate(dataset = "ECPE")
+df.bagged.ec.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_ecpe.rds")) %>% mutate(dataset = "ECPE")
 
-df.sim.ec.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_ecpe.rds"))
+df.sim.ec.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_ecpe.rds")) #Bootstrap-AB
 
-df.error.ec.plot <- df.error.ec %>% inner_join(
-  df.error.ec.agg
+df.bagged.ec.plot <- df.bagged.ec %>% inner_join(
+  df.bagged.ec.agg
 ) %>% mutate(dataset = "ECPE")
 
-df.error.ec.plot
+glimpse(df.bagged.ec.plot)
 
 
 ```
 
 
 ```{r}
-df.error.ti <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_timss.rds"))
+df.bagged.ti <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_timss.rds"))
 
-df.error.ti.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_timss.rds"))
+df.bagged.ti.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_timss.rds"))
 
-df.error.ti.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_timss.rds")) %>% mutate(dataset = "TIMSS")
+df.bagged.ti.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_timss.rds")) %>% mutate(dataset = "TIMSS")
 
 df.sim.ti.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_timss.rds"))
 
-df.error.ti.plot <- df.error.ti %>% inner_join(
-  df.error.ti.agg
+df.bagged.ti.plot <- df.bagged.ti %>% inner_join(
+  df.bagged.ti.agg
 ) %>% mutate(dataset = "TIMSS")
 
-
+glimpse(df.bagged.ti.plot)
 ```
 
 
 ```{r}
-df.error.ss.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_socialscience.rds"))
+df.bagged.ss <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_socialscience.rds"))
 
-df.error.ss.agg.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_socialscience.rds"))
+df.bagged.ss.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_socialscience.rds"))
 
-df.error.ss.fit.u <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_socialscience.rds")) %>% mutate(dataset = "Social Psychology (Upsample)")
+df.bagged.ss.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_socialscience.rds")) %>% mutate(dataset = "Social Psychology")
 
 df.sim.ss.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_socialscience.rds"))
 
-df.error.ss.plot.u <- df.error.ss.u %>% inner_join(
-  df.error.ss.agg.u
-) %>% mutate(dataset = "Social Psychology (Upsample)")
+df.bagged.ss.plot <- df.bagged.ss %>% inner_join(
+  df.bagged.ss.agg
+) %>% mutate(dataset = "Social Psychology")
 
-df.error.ss.plot.u
-
-
-max(df.error.ss.u$attempts)
+glimpse(df.bagged.ss.plot)
 
 ```
 
-# Merge all Data
+# Bagged DINA Estimator
+
+## Process and Merge all Data sets
 
 ```{r}
 
@@ -105,16 +111,11 @@ labels = c(10,20,40,80, 160, 320)
 #breaks = c(0,5,10,15,20,25,40, 80, 160, 320)
 #labels = c(5,10,15,20,25,40,80, 160, 320)
 
-df.error.plot <- df.error.ec.plot %>% 
+df.bagged.plot <- df.bagged.ec.plot %>% 
   
-  #bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot) %>% 
-  bind_rows(df.error.ti.plot) %>% bind_rows(df.error.ss.plot.u) %>% 
+  bind_rows(df.bagged.ti.plot) %>% bind_rows(df.bagged.ss.plot) %>% 
   
-  mutate(ratio_n = as.numeric(student_question_ratio)) %>%
-  
-  mutate(student_question_ratio = factor(student_question_ratio, levels = sort(unique(as.numeric(student_question_ratio))), ordered = TRUE)) %>%
-  
-  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology (Upsample)"))) %>% #
+  mutate(dataset = factor(dataset, levels = c("ECPE", "TIMSS", "Social Psychology"))) %>% #
   
   mutate(questions = factor(questions)) %>% 
   
@@ -127,13 +128,13 @@ df.error.plot <- df.error.ec.plot %>%
   
   #Average attempts between partitions for each question.
   
-  group_by(dataset, parameter, questions, student_question_ratio) %>%
+  group_by(dataset, parameter, questions, sample_size) %>%
     mutate(attempts_disc_n = round(mean(attempts))) %>% ungroup() %>%
     mutate(attempts_disc = cut(attempts_disc_n, 
                           breaks = c(breaks, max(.$attempts)),
-                          labels = c(labels, "320+"),
+                          labels = c(labels, "++"),
                           #breaks = c(0,10,20,40, 80, 160, 320, max(.$attempts)),
-                          #labels = c(10,20,40,80, 160, 320, "320+"),
+                          #labels = c(10,20,40,80, 160, 320, "++"),
                           #breaks = c(0,5, 10,15,20,25,30,35, max(.$attempts)),
                           #labels = c(5, 10,15,20,25,30,35,"35+"),
                           include.lowest = TRUE, right = TRUE, ordered_result = TRUE))  %>%
@@ -160,113 +161,51 @@ ungroup() %>%
   ungroup() %>%
   arrange(dataset, group, parameter, sample_size)
 
-df.error.plot <- df.error.plot %>% mutate(qsr = factor(qsr, ordered = TRUE), 
+df.bagged.plot <- df.bagged.plot %>% mutate(qsr = factor(qsr, ordered = TRUE), 
                                           sample_size = factor(sample_size, ordered = TRUE), 
                                           avg_attempts = factor(avg_attempts, ordered = TRUE)
                                           )
-distinct(df.error.plot, dataset, upsampled, student_question_ratio, attempts_disc_n) 
 
-summary(df.error.plot$attempts)
-
-
-
-df.error.plot.ss <- df.error.plot %>% filter(dataset == "Social Psychology (Upsample)") %>% filter(sample_size == 525) %>% ## Get Full data, no sample sizes
-  mutate(attempts_disc = cut(attempts,breaks = c(0,5,10,max(.$attempts)), labels = c("5", "10", "10+")))
+# Creating a seperate plot data frame for Social Psychology because the breaks are different than ECPE and TIMSS
+df.bagged.plot.ss <- df.bagged.plot %>% filter(dataset == "Social Psychology") %>% filter(sample_size == max(sample_size)) %>% ## Get Full data, no sample sizes
+  mutate(attempts_disc = cut(attempts,breaks = c(0,5,15,max(.$attempts)), labels = c("[0-5]", "[5-15]", "15+")))
 
 
-#df.error.plot %>% filter(dataset == "Social Psychology (Upsample)") %>% select(sample_size) %>% distinct()
+#df.bagged.plot %>% filter(dataset == "Social Psychology (Upsample)") %>% select(sample_size) %>% distinct()
 ```
 
 ```{r}
 
-df.fit.plot <- df.error.ec.fit %>% bind_rows(df.error.ti.fit) %>% bind_rows(df.error.ss.fit.u)
+df.fit.plot <- df.bagged.ec.fit %>% bind_rows(df.bagged.ti.fit) %>% bind_rows(df.bagged.ss.fit)
 #df.fit.plot
 
 ```
 
 
-# Sampling Error
-
-
-
+## Calculating Absolute Bias 
 ```{r}
 
-df.error.plot %>% select(parameter, group, questions, sampling_mean, attempts_disc, student_question_ratio, dataset) %>% 
-  spread(key="group", value = "sampling_mean") %>% arrange(attempts_disc) %>% #filter(parameter == "Guess") %>%
-  
-  
-  
-  ggplot() + 
-  aes(x=`Partition 1`, y=`Partition 2`, color = parameter) +
-  geom_point(show.legend = TRUE, alpha = 0.4) +
-  facet_grid(dataset+parameter~attempts_disc, scales = "free") + 
-  ggtitle("Distribution of Sampling Mean for each Sample Size") + 
-  #scale_x_continuous(breaks = c(0,0.5)) + 
-  #scale_y_continuous(breaks = c(0,0.5)) + 
-  ggpubr::theme_pubclean() + 
-  labs(color = "", subtitle = "IAC") + 
-  theme(legend.position = "bottom")
-
-```
-
-
-Simulation count, this differs because in case of missing data, each item may not be attempted in each simulation batch.
-# Bayesian MAB
-```{r}
-
-df.mean_diff <- df.error.plot  %>% select(parameter, group, questions, sampling_mean, student_question_ratio, attempts_disc, dataset, upsampled, total_count) %>% 
+df.mean_diff <- df.bagged.plot  %>% select(parameter, group, questions, sample_size, sampling_mean, attempts_disc, dataset, upsampled, total_count) %>% 
   spread(key="group", value = "sampling_mean") %>% rename("Partition1_mean" = `Partition 1`, "Partition2_mean" = `Partition 2`)  %>% 
   
-  group_by(dataset,parameter,student_question_ratio,questions) %>% 
+  group_by(dataset,parameter,sample_size, questions) %>% 
+  mutate(abs_bias = abs(Partition1_mean - Partition2_mean)) %>%
+  ungroup()
+  
+
+# Calculating separately for Social Psychology with different breaks in IAC.
+df.mean_diff.ss <- df.bagged.plot.ss  %>% select(parameter, group, questions, sample_size, sampling_mean, attempts_disc, dataset, upsampled, total_count) %>% 
+  spread(key="group", value = "sampling_mean") %>% rename("Partition1_mean" = `Partition 1`, "Partition2_mean" = `Partition 2`)  %>% 
+  
+  group_by(dataset,parameter,sample_size, questions) %>% 
   mutate(abs_bias = abs(Partition1_mean - Partition2_mean)) %>%
   ungroup()
   
 
 
-df.mean_diff.ss <- df.error.plot.ss  %>% select(parameter, group, questions, attempts_disc, sampling_mean, total_count) %>% 
-  spread(key="group", value = "sampling_mean") %>% rename("Partition1_mean" = `Partition 1`, "Partition2_mean" = `Partition 2`)  %>% 
-  
-  group_by(parameter,questions, attempts_disc) %>% 
-  mutate(abs_bias = abs(Partition1_mean - Partition2_mean)) %>%
-  ungroup()
-
-
-#df.error_diff <- df.error.plot  %>% select(parameter, group, questions, sampling_error, student_question_ratio, attempts_disc_n, dataset, upsampled, total_count) %>% 
-#  spread(key="group", value = "sampling_error") %>% rename("Partition1_error" = `Partition 1`, "Partition2_error" = `Partition 2`)  %>% 
-  
-#  group_by(dataset,parameter,student_question_ratio,questions) %>% 
-#  mutate(error_diff = Partition1_error - Partition2_error)  
-
-#df.error.plot %>% group_by(dataset,total_count) %>% tally()
-
-
 ```
 
-```{r}
-#df.mean_diff %>% group_by(dataset, parameter) %>% top_n(1, wt = Partition1_mean)
-```
-
-
-
-# Mean over all items
-```{r}
-
-#df.diff <- df.mean_diff %>% group_by(dataset, parameter, attempts_disc_n,upsampled) %>% #,attempts, student_question_ratio
-#  summarize(
-#    mn = mean(abs_bias),
-#    sd = sd(abs_bias),
-#    min = min(abs_bias),
-#    max = max(abs_bias),
-#    var = var(abs_bias)
-    
-#  )
-
-#df.diff
-
-```
-
-
-# Plot for poster presentation
+## ECPE Data set
 
 ```{r}
 
@@ -284,7 +223,7 @@ df.t %>%
   geom_boxplot(alpha = 0.6, show.legend = FALSE) +
  
   facet_grid(parameter~.) +
-  labs(x="Item Administered Count (IAC)", y = "Bayesian-MAB", fill = "") + 
+  labs(x="Item Administered Count (IAC)", y = "Bagged-AB", fill = "") + 
   theme_pubclean() + theme(legend.position = "bottom", 
                            axis.text=element_text(size=10),
                            legend.text = element_text(size = 10),
@@ -296,15 +235,15 @@ df.t %>%
                            
                            ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +
   #scale_fill_brewer(palette="Set2") + 
-  scale_fill_manual(values = c("#E46F1F", "#7AC043"))   + 
+  scale_fill_manual(values = c("#E46F1F", "#7AC043"))   #+ 
   #stat_summary(geom = "text", fun.data = n_fun) +
-  scale_y_continuous(breaks = seq(0,0.2,0.02))
+  #scale_y_continuous(breaks = seq(0,0.2,0.02))
 
   #ggsave("EC_g.png", dpi = "retina", width = 15, height = 6, units = "in") 
 
 ```
 
-
+## TIMSS Data set
 
 ```{r}
 
@@ -323,7 +262,7 @@ df.t %>%
   geom_boxplot(alpha = 0.6, show.legend = FALSE) +
  
   facet_grid(parameter~.) +
-  labs(x="Item Administered Count (IAC)", y = "Bayesian-MAB", fill = "") + 
+  labs(x="Item Administered Count (IAC)", y = "Bagged-AB", fill = "") + 
   theme_pubclean() + theme(legend.position = "bottom", 
                            axis.text=element_text(size=10),
                            legend.text = element_text(size = 10),
@@ -336,8 +275,44 @@ df.t %>%
                            
                            ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +
   #scale_fill_brewer(palette="Set2") + 
-  scale_fill_manual(values = c("#E46F1F", "#7AC043"))  + 
-  scale_y_continuous(breaks = seq(0,0.2,0.02))
+  scale_fill_manual(values = c("#E46F1F", "#7AC043"))  #+ 
+  #scale_y_continuous(breaks = seq(0,0.2,0.02))
+  
+
+  #ggsave("TI_g.png", dpi = "retina", width = 15, height = 6, units = "in") 
+
+```
+
+## Social Psychology Data set
+
+```{r}
+
+df.t <- df.mean_diff.ss 
+
+df.t %>%
+  
+  ggplot() + 
+  aes(x= attempts_disc, y = abs_bias, fill = paste(parameter, "Parameter")) +
+  
+  #geom_point(size = 3) +
+  geom_boxplot(alpha = 0.6, show.legend = FALSE) +
+ 
+  facet_grid(parameter~.) +
+  labs(x="Item Administered Count (IAC)", y = "Bagged-AB", fill = "") + 
+  theme_pubclean() + theme(legend.position = "bottom", 
+                           axis.text=element_text(size=10),
+                           legend.text = element_text(size = 10),
+                           
+                           strip.text = element_text(size = 10),
+                           axis.title=element_text(size=10),
+                           
+                           #panel.border = element_rect(colour = "black", fill=NA, size=2, linetype = "dotted"),
+                           #strip.background = element_rect(fill = "White", colour = "Black")
+                           
+                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  #scale_fill_brewer(palette="Set2") + 
+  scale_fill_manual(values = c("#E46F1F", "#7AC043"))  #+ 
+  #scale_y_continuous(breaks = seq(0,0.2,0.02))
   
 
   #ggsave("TI_g.png", dpi = "retina", width = 15, height = 6, units = "in") 
@@ -345,87 +320,14 @@ df.t %>%
 ```
 
 
-
-```{r}
-
-df.mean_diff.ss %>% 
-
-  
-  ggplot() + 
-  aes(x = attempts_disc, y= abs_bias) + #, color = paste(parameter, "Parameter")) +
-  
-  geom_jitter(width = 0.1, alpha = 0.15) +
-  #geom_boxplot(alpha = 0.6, show.legend = FALSE) +
-  #geom_histogram()+
-  #stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8) + 
-  facet_grid(parameter~., scales = "free") +
-  labs(x="Item Administered Count (IAC)", y = "Bayesian-MAB", fill = "", color = "") + 
-  theme_pubclean() + theme(legend.position = "bottom", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
-                           
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10),
-                           
-                           #panel.border = element_rect(colour = "black", fill=NA, size=2, linetype = "dotted"),
-                           #strip.background = element_rect(fill = "White", colour = "Black")
-                           
-                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) 
-
-  
-  
-
-  #ggsave("combined_b_mab_ss.png", dpi = "retina", width = 7.5, height = 4, units = "in") 
-
-```
-
-
-```{r}
-
-df.mean_diff %>% filter(dataset != "Social Psychology (Upsample)") %>%
-
-  
-  ggplot() + 
-  aes(x= attempts_disc, y = abs_bias) + #, color = paste(parameter, "Parameter")) +
-  
-  geom_jitter(width = 0.1, alpha = 0.15) +
-  #geom_boxplot(alpha = 0.6, show.legend = FALSE) +
-  stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8) + 
-  facet_grid(parameter~dataset, scales = "free") +
-  labs(x="Item Administered Count (IAC)", y = "Bayesian-MAB", fill = "", color = "") + 
-  theme_pubclean() + theme(legend.position = "bottom", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
-                           
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10),
-                           
-                           #panel.border = element_rect(colour = "black", fill=NA, size=2, linetype = "dotted"),
-                           #strip.background = element_rect(fill = "White", colour = "Black")
-                           
-                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +
-  #scale_fill_brewer(palette="Set2") + 
-  scale_fill_manual(values = c("#E46F1F", "#7AC043"))  + 
-  scale_y_continuous(limits = c(0,0.12), breaks = seq(0,0.12,0.02))
-  
-
-  ggsave("combined_b_mab.png", dpi = "retina", width = 7.5, height = 3, units = "in") 
-
-```
-
-
-
-
-## Individual Differences
-
-
+# Bootstrap-AB metrics
 ```{r}
 df.ind_z.ec <- df.sim.ec.item %>% #filter(str_detect(questions,"E1$|E2$|E3$|E4$")) %>% 
   mutate(attempts_disc = cut(attempts, 
                           breaks = c(breaks, max(.$attempts)),
-                          labels = c(labels, "320+"),
+                          labels = c(labels, "++"),
                           #breaks = c(0,10,20,40, 80, 160, 320, max(.$attempts)),
-                          #labels = c(10,20,40,80, 160, 320, "320+"),
+                          #labels = c(10,20,40,80, 160, 320, "++"),
                           include.lowest = TRUE, right = TRUE, ordered_result = TRUE)) %>% 
            
            
@@ -460,9 +362,9 @@ df.ind_z.ti <- df.sim.ti.item %>%
   #filter(questions == "M051305", sample_size == 1010) %>% 
   mutate(attempts_disc = cut(attempts, 
                           breaks = c(breaks, max(.$attempts)),
-                          labels = c(labels, "320+"),
+                          labels = c(labels, "++"),
                           #breaks = c(0,10,20,40, 80, 160, 320, max(.$attempts)),
-                          #labels = c(10,20,40,80, 160, 320, "320+"),
+                          #labels = c(10,20,40,80, 160, 320, "++"),
                           include.lowest = TRUE, right = TRUE, ordered_result = TRUE)) %>% 
            
                           #                 cut(attempts, 
@@ -497,8 +399,8 @@ df.ind_z.ti <- df.sim.ti.item %>%
 
 Treating Social Psychology dataset separately 
 ```{r}
-df.ind_z.ss <- df.sim.ss.item %>% filter(sample_size == 525) %>%  # getting whole dataset. No samples.
-  mutate(attempts_disc = cut(attempts,breaks = c(0,5,10,max(.$attempts)), labels = c("5", "10", "10+"))) %>%
+df.ind_z.ss <- df.sim.ss.item %>% filter(sample_size ==  max(sample_size)) %>%  # getting whole dataset. No samples.
+  mutate(attempts_disc = cut(attempts,breaks = c(0,5,15,max(.$attempts)), labels = c("[0-5]", "[5-15]", "15+"))) %>%
   spread(key = group, value = item_parameters) %>% 
   group_by(parameter, questions, attempts_disc, sim_no) %>% 
   #group_by(sim_no, sample_size, parameter, student_question_ratio, questions, attempts_disc) %>%
@@ -527,7 +429,7 @@ df.ind_z.ss <- df.sim.ss.item %>% filter(sample_size == 525) %>%  # getting whol
 
 ```
 
-
+## ECPE
 
 ```{r}
 
@@ -544,7 +446,7 @@ df.t %>%
   #geom_jitter(width = 0.1, alpha = 0.15) + 
   geom_boxplot(alpha = 0.6, show.legend = FALSE) + 
   facet_grid(parameter~.) + 
-  labs(x="Item Administered Count (IAC)", y = "MAB", fill = "") +
+  labs(x="Item Administered Count (IAC)", y = "Bootstrap-AB", fill = "") +
   theme_pubclean() + theme(legend.position = "bottom", 
                            axis.text=element_text(size=10),
                            legend.text = element_text(size = 10),
@@ -564,7 +466,7 @@ df.t %>%
 
 ```
 
-
+## TIMSS
 ```{r}
 
 df.ind_z.ti %>% #write_excel_csv("../data/FirstYearProject/individual_z.csv")
@@ -573,7 +475,7 @@ df.ind_z.ti %>% #write_excel_csv("../data/FirstYearProject/individual_z.csv")
   #geom_jitter(width = 0.1, alpha = 0.15) + 
   geom_boxplot(alpha = 0.6, show.legend = FALSE) + 
   facet_grid(parameter~.) +
-  labs(x="Item Administered Count (IAC)", y = "MAB", fill = "") + 
+  labs(x="Item Administered Count (IAC)", y = "Bootstrap-AB", fill = "") + 
   theme_pubclean()+ theme(legend.position = "bottom", 
                            axis.text=element_text(size=10),
                            legend.text = element_text(size = 10),
@@ -591,10 +493,13 @@ df.ind_z.ti %>% #write_excel_csv("../data/FirstYearProject/individual_z.csv")
 
 ```
 
+
+## Social Psychology
 ```{r}
 df.ind_z.ss %>% 
   ggplot() + 
   aes(x=attempts_disc, y=MAB) + 
+  labs(y="Bootstrap-AB")+
   geom_jitter()
   
 ```
@@ -613,8 +518,8 @@ df.ind_z.ti %>% mutate(dataset="TIMSS") %>%
   geom_jitter(width = 0.1, alpha = 0.15) + 
   #geom_boxplot(alpha = 0.6, show.legend = FALSE) + 
   facet_grid(parameter~dataset, scales = "free") +
-  labs(x="Item Administered Count (IAC)", y = "MAB", fill = "", color = "") + 
-  stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8) + 
+  labs(x="Item Administered Count (IAC)", y = "Absolute Bias", fill = "", color = "") + 
+  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8) + 
   theme_pubclean()+ theme(legend.position = "bottom", 
                            axis.text=element_text(size=10),
                            legend.text = element_text(size = 10),
@@ -632,168 +537,150 @@ df.ind_z.ti %>% mutate(dataset="TIMSS") %>%
 
 ```
 
+# Compare Bootstrap-AB and Bagged-AB
 
+## ECPE
 
 ```{r}
 
 
-df.mean_diff %>% filter(dataset == "ECPE") %>% select(parameter, attempts_disc, abs_bias) %>% rename(metric = abs_bias) %>% mutate(type = "Bayesian-MAB") %>% bind_rows(
+  df.ind_z.ec %>% select(parameter, attempts_disc, MAB) %>% rename(metric = MAB) %>% mutate(type = "Bootstrap-AB") %>% bind_rows(
+    df.mean_diff %>% filter(dataset == "ECPE") %>% select(parameter, attempts_disc, abs_bias) %>% rename(metric = abs_bias) %>% mutate(type = "Bagged-AB")
+  ) %>%
   
-  df.ind_z.ec %>% select(parameter, attempts_disc, MAB) %>% rename(metric = MAB) %>% mutate(type = "MAB")
-) %>%
-  
-  mutate(type = factor(type, levels = c("MAB", "Bayesian-MAB"), ordered = TRUE)) %>% 
+  mutate(type = factor(type, levels = c("Bootstrap-AB", "Bagged-AB"), ordered = TRUE)) %>% 
   ggplot() + 
   aes(x=attempts_disc, y=metric) + 
+  
   geom_jitter(width = 0.1, alpha = 0.15) + 
-  facet_grid(parameter~type) + 
-  labs(x="Item Administered Count (IAC)", y = "", fill = "", color = "") + 
-  stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8)  + 
-  theme_pubclean()+ theme(legend.position = "bottom", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
+  geom_hline(aes(yintercept = 0.05), linetype = 2) + 
+  facet_grid(paste0(parameter, "")~type, switch = "y") + 
+  labs(x="Item Administered Count (IAC)", y = "Item Bias", fill = "", color = "") + 
+  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8)  + 
+  theme_pubr() + theme(legend.position = "bottom", 
+                           axis.text=element_text(size=14),
+                           legend.text = element_text(size = 14),
+                           strip.text = element_text(size = 14),
+                           axis.title=element_text(size=14),
+                           axis.text.y.left = element_blank(),
+                           axis.title.y.left = element_blank()
                            
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10)
-                           
-                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) #+ 
-  #scale_y_continuous(breaks = c(0,0.5,0.1,0.2,0.3,0.4))
+                           ) + theme(strip.placement = "outside", panel.border = element_rect(fill = NA)) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
+  scale_y_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5), limits = c(0,0.47), sec.axis = dup_axis())
 
- ggsave("ecpe_mab_bmab.png", dpi = "retina", width = 7.5, height = 3, units = "in")
+ ggsave("ecpe_mab_bmab.png", dpi = "retina", width = 8, height = 3.5, units = "in")
 
 ```
 
-
+## TIMSS
 ```{r}
 
 
-df.mean_diff %>% filter(dataset == "TIMSS") %>% select(parameter, attempts_disc, abs_bias) %>% rename(metric = abs_bias) %>% mutate(type = "Bayesian-MAB") %>% bind_rows(
-  
-  df.ind_z.ti %>% select(parameter, attempts_disc, MAB) %>% rename(metric = MAB) %>% mutate(type = "MAB")
+df.ind_z.ti %>% select(parameter, attempts_disc, MAB) %>% rename(metric = MAB) %>% mutate(type = "Bootstrap-AB") %>% bind_rows(
+  df.mean_diff %>% filter(dataset == "TIMSS") %>% select(parameter, attempts_disc, abs_bias) %>% rename(metric = abs_bias) %>% mutate(type = "Bagged-AB") 
 ) %>%
   
-  mutate(type = factor(type, levels = c("MAB", "Bayesian-MAB"), ordered = TRUE)) %>% 
+  mutate(type = factor(type, levels = c("Bootstrap-AB", "Bagged-AB"), ordered = TRUE)) %>% 
   ggplot() + 
   aes(x=attempts_disc, y=metric) + 
+  geom_hline(aes(yintercept = 0.05), linetype = 2) + 
   geom_jitter(width = 0.1, alpha = 0.15) + 
-  facet_grid(parameter~type) + 
-  labs(x="Item Administered Count (IAC)", y = "", fill = "", color = "") + 
-  stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8)  + 
-  theme_pubclean()+ theme(legend.position = "bottom", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
+  facet_grid(paste0(parameter, "")~type, switch = "y") +  
+  labs(x="Item Administered Count (IAC)", y = "Item Bias", fill = "", color = "") + 
+  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8)  + 
+  theme_pubr() + theme(legend.position = "bottom", 
+                           axis.text=element_text(size=14),
+                           legend.text = element_text(size = 14),
                            
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10)
+                           strip.text = element_text(size = 14),
+                           axis.title=element_text(size=14),
+                           axis.text.y.left = element_blank(),
+                       axis.title.y.left = element_blank()
                            
-                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) #+ 
-  #scale_y_continuous(breaks = c(0,0.5,0.1,0.2,0.3,0.4))
+                           ) + theme(strip.placement = "outside", panel.border = element_rect(fill = NA)) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
+  
+  scale_y_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5), limits = c(0,0.55), sec.axis = dup_axis())
 
- ggsave("timss_mab_bmab.png", dpi = "retina", width = 7.5, height = 3, units = "in")
+ ggsave("timss_mab_bmab.png", dpi = "retina", width = 8, height = 3.5, units = "in")
 
 ```
 
 
-```{r}
-
-df.mean_diff.ss %>% select(parameter, abs_bias) %>% rename(metric = abs_bias) %>% mutate(metric_type = "Bayesian-MAB") %>% bind_rows( 
-df.ind_z.ss %>% select(parameter, MAB) %>% rename(metric = MAB) %>% mutate(metric_type = "MAB")
-) %>%
-  
-  ggplot() + 
-  aes(x=metric, fill = metric_type) + 
-  geom_histogram() + 
-  facet_grid(parameter~metric_type, scales = "free")
-
-```
-
+## Social Psychology 
 
 ```{r}
 
-df.mean_diff.ss %>% select(parameter, abs_bias, attempts_disc) %>% rename(metric = abs_bias) %>% mutate(metric_type = "Bayesian-MAB") %>% bind_rows( 
-df.ind_z.ss %>% select(parameter, MAB, attempts_disc) %>% rename(metric = MAB) %>% mutate(metric_type = "MAB")
-) %>% mutate(metric_type = factor(metric_type, levels = c("MAB", "Bayesian-MAB"), ordered = TRUE)) %>% filter(attempts_disc != 5) %>%
+df.mean_diff.ss %>% select(parameter, abs_bias, attempts_disc) %>% rename(metric = abs_bias) %>% mutate(metric_type = "Bagged-AB") %>% bind_rows( 
+df.ind_z.ss %>% select(parameter, MAB, attempts_disc) %>% rename(metric = MAB) %>% mutate(metric_type = "Bootstrap-AB")
+) %>% mutate(metric_type = factor(metric_type, levels = c("Bootstrap-AB", "Bagged-AB"), ordered = TRUE)) %>% filter(attempts_disc == "[5-15]") %>%
   
   ggplot() + 
-  aes(x=attempts_disc, y = metric, shape = attempts_disc, color = attempts_disc) + 
-  geom_jitter(width = 0.1, alpha = 0.05) + 
-  stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8, show.legend = FALSE) + 
-  facet_grid(parameter~metric_type, scales = "free") + 
-  theme_pubclean()+ theme(legend.position = "right", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
+  aes(x=attempts_disc, y = metric)+#, shape = attempts_disc, color = attempts_disc) + 
+  geom_jitter(width = 0.1, alpha = 0.15) + 
+  #stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8, show.legend = FALSE) + 
+  facet_grid(parameter~metric_type, switch = "y") + 
+  
+  geom_hline(aes(yintercept = 0.05), linetype = 2) + 
+  
+  theme_pubr() + theme(legend.position = "bottom", 
+                           axis.text=element_text(size=14),
+                           legend.text = element_text(size = 14),
                            
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10)
+                           strip.text = element_text(size = 14),
+                           axis.title=element_text(size=14),
+                           axis.text.y.left = element_blank(),
+                           axis.title.y.left = element_blank(),
+                           #axis.ticks.y.left = element_blank()
                            
-                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
-  labs(x="", y="" , shape = "IAC", color = "IAC", size = "IAC", alpha = "IAC") + 
+                           
+                           ) + theme(strip.placement = "outside", panel.border = element_rect(fill = NA)) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) +  
+  labs(x="Item Administered Count (IAC)", y="Item Bias" , shape = "IAC", color = "IAC", size = "IAC", alpha = "IAC") + 
+  scale_y_continuous(breaks = c(0, 0.2,0.4,0.6,0.8,1), sec.axis = dup_axis()) +
   #scale_color_manual(values = c("black", "#E46F1F")) + 
   #scale_size_manual(values = c(2,3)) + 
   scale_color_uchicago(palette = "dark")
 
 
- ggsave("combined_ss.png", dpi = "retina", width = 7.5, height = 3, units = "in") 
+ ggsave("combined_ss.png", dpi = "retina", width = 8, height = 3.5, units = "in") 
 
 ```
-
-```{r}
-
-df.plot.ss <- df.mean_diff.ss %>% select(parameter, abs_bias, attempts_disc) %>% rename(metric = abs_bias) %>% mutate(metric_type = "Bayesian-MAB") %>% bind_rows( 
-df.ind_z.ss %>% select(parameter, MAB, attempts_disc) %>% rename(metric = MAB) %>% mutate(metric_type = "MAB")
-) %>% mutate(metric_type = factor(metric_type, levels = c("MAB", "Bayesian-MAB"), ordered = TRUE))
-
-df.plot.ss %>%
-  
-  ggplot() + 
-  aes(x=attempts_disc, y = metric) + 
-  geom_jitter(width = 0.1, alpha = 0.15) + 
-  stat_summary(fun.y = mean, geom = "line", aes(group = 1), color = "lightBlue", size = 0.8, show.legend = FALSE) + 
-  facet_grid(parameter~metric_type, scales = "free") + 
-  theme_pubclean()+ theme(legend.position = "right", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
-                           
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10)
-                           
-                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
-  labs(x="Item Administered Count (IAC)", y="" , shape = "IAC", color = "IAC", size = "IAC", alpha = "IAC") #+ 
-  #scale_color_manual(values = c("black", "#E46F1F")) + 
-  #scale_size_manual(values = c(2,3)) + 
-  #scale_color_uchicago(palette = "dark")
-
-
- ggsave("combined_ss.png", dpi = "retina", width = 7.5, height = 3, units = "in") 
-
-```
-
-```{r}
-
-df.plot.ss.comp <- df.plot.ss %>% filter(attempts_disc == 10) %>% group_by(parameter, attempts_disc, metric_type) %>% summarise(central_value = mean(metric, na.rm = TRUE), sd = sd(metric, na.rm = TRUE)) %>% mutate(dataset = "SP_UTD") %>% rename(type = metric_type)
-df.plot.ss.comp
-```
-
 
 # Comparing everything
 
+Processing ECPE and TIMSS data
+
 ```{r}
 df.t <- 
-  df.mean_diff %>% filter(dataset == "ECPE") %>% select(parameter, attempts_disc, abs_bias) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = mean(abs_bias), sd = sd(abs_bias)) %>% ungroup() %>% mutate(dataset = "ECPE", type = "Bayesian-MAB") %>%
+  df.mean_diff %>% filter(dataset == "ECPE") %>% select(parameter, attempts_disc, abs_bias) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = mean(abs_bias), sd = sd(abs_bias)) %>% ungroup() %>% mutate(dataset = "ECPE", type = "Bagged-AB") %>%
   
   bind_rows(
-    df.mean_diff %>% filter(dataset == "TIMSS") %>% select(parameter, attempts_disc, abs_bias) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = mean(abs_bias), sd = sd(abs_bias)) %>% ungroup() %>% mutate(dataset = "TIMSS", type = "Bayesian-MAB")
+    df.mean_diff %>% filter(dataset == "TIMSS") %>% select(parameter, attempts_disc, abs_bias) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = mean(abs_bias), sd = sd(abs_bias)) %>% ungroup() %>% mutate(dataset = "TIMSS", type = "Bagged-AB")
 ) %>% bind_rows(
   
-  df.ind_z.ec %>% select(parameter, attempts_disc, MAB) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = median(MAB), sd = sd(MAB)) %>% ungroup() %>% mutate(dataset = "ECPE", type = "MAB")
+  df.ind_z.ec %>% select(parameter, attempts_disc, MAB) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = median(MAB), sd = sd(MAB)) %>% ungroup() %>% mutate(dataset = "ECPE", type = "Bootstrap-AB")
 ) %>% bind_rows(
   
-  df.ind_z.ti %>% select(parameter, attempts_disc, MAB) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = median(MAB), sd = sd(MAB)) %>% ungroup() %>% mutate(dataset = "TIMSS", type = "MAB")
+  df.ind_z.ti %>% select(parameter, attempts_disc, MAB) %>% group_by(parameter,attempts_disc) %>% summarise(central_value = median(MAB), sd = sd(MAB)) %>% ungroup() %>% mutate(dataset = "TIMSS", type = "Bootstrap-AB")
 ) %>%
   
-  mutate(type = factor(type, levels = c("MAB", "Bayesian-MAB"), ordered = TRUE))
+  mutate(type = factor(type, levels = c("Bootstrap-AB", "Bagged-AB"), ordered = TRUE))
 
 df.t
+```
+
+Processing Social Psychology Data
+```{r}
+
+df.plot.ss <- df.mean_diff.ss %>% select(parameter, abs_bias, attempts_disc) %>% rename(metric = abs_bias) %>% mutate(metric_type = "Bagged-AB") %>% bind_rows( 
+                            df.ind_z.ss %>% select(parameter, MAB, attempts_disc) %>% rename(metric = MAB) %>% mutate(metric_type = "Bootstrap-AB")
+                            ) %>% 
+  mutate(metric_type = factor(metric_type, levels = c("Bootstrap-AB", "Bagged-AB"), ordered = TRUE))
+
+df.plot.ss.comp <- df.plot.ss %>% filter(attempts_disc == "[5-15]") %>% group_by(parameter, attempts_disc, metric_type) %>% summarise(central_value = mean(metric, na.rm = TRUE), sd = sd(metric, na.rm = TRUE)) %>% mutate(dataset = "SP-UTD") %>% rename(type = metric_type)
+
 ```
 
 
@@ -803,15 +690,25 @@ ggplot() +
   
   
    
-  geom_line(data = df.t %>% filter(type == "MAB"), 
+  geom_line(data = df.t %>% filter(type == "Bootstrap-AB"), 
             aes( x=attempts_disc, y=central_value, 
                  color = paste0(dataset), 
                  group = paste0(dataset),
                  #linetype = paste0(dataset)
                  ),
-            size = 1
-            ) + 
-  geom_errorbar(data = df.t %>% filter(type == "MAB"), 
+            size = 0.6
+            ) +
+  
+  geom_point(data = df.t %>% filter(type == "Bootstrap-AB"), 
+            aes( x=attempts_disc, y=central_value, 
+                 color = paste0(dataset), 
+                 #group = paste0(dataset),
+                 #linetype = paste0(dataset)
+                 shape = dataset),
+            size = 2.5, position = position_dodge(width = 0.25)
+            ) +
+  
+  geom_errorbar(data = df.t %>% filter(type == "Bootstrap-AB"), 
                 aes(x=attempts_disc, 
                     ymin = central_value - sd, 
                     ymax = central_value + sd, 
@@ -823,49 +720,75 @@ ggplot() +
 
   
   
-  geom_line(data = df.t %>% filter(type == "Bayesian-MAB"), 
+  geom_line(data = df.t %>% filter(type == "Bagged-AB"), 
             aes( x=attempts_disc, y=central_value, 
                  color = paste0(dataset), 
                  group = paste0(dataset),
                  #linetype = paste0(dataset)
                  ),
-            size = 1
-            ) + 
-  geom_errorbar(data = df.t %>% filter(type == "Bayesian-MAB"), 
+            size = 0.6
+            ) +
+  geom_point(data = df.t %>% filter(type == "Bagged-AB"), 
+          aes( x=attempts_disc, y=central_value, 
+               color = paste0(dataset), 
+               #group = paste0(dataset),
+               shape = dataset
+               #linetype = paste0(dataset)
+               ),
+          size = 2.5, position = position_dodge(width = 0.25)
+          ) +
+
+  geom_errorbar(data = df.t %>% filter(type == "Bagged-AB"), 
                 aes(x=attempts_disc, 
                     ymin = central_value - sd, 
                     ymax = central_value + sd,
                     color = paste0(dataset),
                     #linetype = paste0(dataset)
                     ), 
-                width = 0.25, size = 0.9,linetype = "solid",
+                width = 0.25, size = 0.6,linetype = "solid",
                 position = position_dodge(width = 0.25)) + 
   
   
   geom_point(data=df.plot.ss.comp, 
-                  aes(x=attempts_disc, 
+                  aes(x="10", 
                       y=central_value,
-                      fill = dataset),
-                  size = 4, alpha = 0.5
+                      color = dataset,
+                      shape = dataset),
+                  size = 2.5, position = position_nudge(x = 0.5)#, shape = 2
                 ) + 
+  
+  geom_errorbar(data = df.plot.ss.comp, 
+                aes(x="10", 
+                    ymin = central_value - sd, 
+                    ymax = central_value + sd,
+                    color = paste0(dataset),
+                    #linetype = paste0(dataset)
+                    ), 
+                width = 0.25, size = 0.6,linetype = "solid",
+                position = position_nudge(x = 0.5)) + 
+  
+  geom_hline(data = df.plot.ss.comp,aes(yintercept = 0.05), linetype = 2) + 
    
   
   facet_grid(parameter~type) + 
-  labs(color = "", linetype = "", fill = "Datasets") + 
-  theme_pubclean() + 
-  labs(x="Item Administered Count (IAC)", y = "Mean/Standard Deviation") + 
-  scale_color_uchicago() + theme(legend.position = "right", 
-                           axis.text=element_text(size=10),
-                           legend.text = element_text(size = 10),
-                           
-                           strip.text = element_text(size = 10),
-                           axis.title=element_text(size=10)
-                           
+  labs(color = "", linetype = "", fill = "", shape = "", y ="Item Bias", x="Item Administered Count (IAC)") + 
+  theme_pubr() + 
+  scale_color_uchicago(palette = "dark") + 
+  #scale_colour_hue(c=150, l=80) + 
+  
+  #scale_color_brewer(palette = "Greys") + 
+  theme(legend.position = "bottom", 
+         axis.text=element_text(size=10),
+         legend.text = element_text(size = 10),
+         
+         strip.text = element_text(size = 10),
+         axis.title=element_text(size=10)
+                         
                            ) + 
-  scale_y_continuous(breaks = c(0,0.05,0.1,0.2,0.3,0.4))
+  scale_y_continuous(breaks = c(0,0.1,0.2,0.3,0.4))
 
 
-ggsave("all_combined.png", dpi = "retina", width = 7.5, height = 3, units = "in") 
+ggsave("all_combined.png", dpi = "retina", width = 8, height = 4, units = "in") 
 
 ```
 

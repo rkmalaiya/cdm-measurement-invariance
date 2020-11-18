@@ -30,11 +30,11 @@ x_pre <- read_csv("../data/FirstYearProject/OUTPUT.csv")
 
 ```{r}
 
-Q_from_book <- read_csv("../data/FirstYearProject/final_result_similar.csv") %>% mutate(`Learning Objective` = `Topic`)
+Q_from_book <- read_csv("../data/FirstYearProject/final_result_similar.csv") #%>% mutate(`Learning Objective` = `Topic`)
 
 
 Q_from_book <- Q_from_book %>% 
-  mutate(`Learning Objective` = str_trim(str_remove_all(`APA Learning Objective`, "\\."))) %>% 
+  mutate(`Learning Objective` = str_trim(str_remove_all(`alpha`, "\\."))) %>% 
   filter(`Learning Objective` != "nan")
   
 

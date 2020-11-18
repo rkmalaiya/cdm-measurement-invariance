@@ -2,14 +2,17 @@
 library(janitor)
 
 
-n_boot = 100
+n_boot = 10
 
 get_sample_sizes <- function(dim.students, dim.questions) {
   
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c(0.4, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 50, 100) #0.1, 0.2, 0.3,  # Student/Questions
+  #dim.students <- 525
+  #dim.questions <- 939
+  
+  student_question_ratios = c( 0.3, 0.4, 0.5, 1,2,4, 6, 8, 10,  15, 20, 25, 30, 100) #0.1, 0.2,   # Student/Questions
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
@@ -18,20 +21,20 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   student_question_ratio_all <- student_question_ratios[allow_sizes]
   
   sample_sizes <- c(sample_sizes, dim.students)
-  student_question_ratio_all <- c(student_question_ratio_all, round(dim.students/dim.questions,1))
+  #student_question_ratio_all <- c(student_question_ratio_all, round(dim.students/dim.questions,1))
   
-  student_question_ratios <- factor(c(as.character(student_question_ratio_all)),
-                                    # So that missing levels are also included
-                                    levels = union(as.character(student_question_ratios), round(dim.students/dim.questions,1)), 
-                                    ordered = TRUE)
+  #student_question_ratios <- factor(c(as.character(student_question_ratio_all)),
+  #                                  # So that missing levels are also included
+  #                                  levels = union(as.character(student_question_ratios), round(dim.students/dim.questions,1)), 
+  #                                  ordered = TRUE)
   
-  return(list(ratio = student_question_ratios, sample_size = sample_sizes))
+  return(sample_sizes)
 }
 
 ### Bootstrapping (without replacement) 
-get_parameter_estimates <- function(df.X.p2,Q_reduced, group = "Group", Q_names) {
+get_parameter_estimates <- function(X.p,Q_reduced, group = "Group", Q_names) {
   
-  df.cdm <- CDM::din(df.X.p2, Q_reduced, progress=FALSE)
+  df.cdm <- CDM::din(X.p, Q_reduced, progress=FALSE)
   
   fit <- IRT.modelfit(df.cdm)
   
@@ -96,7 +99,7 @@ cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) 
   #df.t <- X
   #Q_reduced = Q
   
-  X <- df[i,]
+  X <- df[i,] #Generating bootstrapped data by using bootstrapped index provided by boot function
   X.s <- head(X, sample_size) # Taking only 1:sample_size data to create smaller sample from bootstrapped X.
   
   X.p1.s <- X.s %>% head(round(dim(X.s)[1]/2)) # Partitition sample into two sub-populations.
@@ -180,10 +183,11 @@ get_boot_index <- function(X) {
 
 
 # This function calculate non-parameter bootstrapped statistics for a given sample size
-get_mean_sample_error <- function(X, Q, sample_size, sqr) {
+get_mean_sample_error <- function(X, Q, sample_size) {
   
     print( c("Starting ", n_boot, " bootstrap for sample size:", sample_size) )
   
+    # Bootstrap indexes are created from the whole data. However, DINA parameters are estimated only for the given sample size
     X.bt <- get_boot_index(X) %>% as.data.frame()
     X.index <- X.bt[1,]  %>% gather() 
     X.index <- X.index$value
@@ -208,13 +212,13 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
   #browser()
   df.data.sim.item <- df.data.sim %>% filter(type == "item") %>% 
     select(-type) %>% rename(questions = entities, item_parameters = value) %>% 
-    mutate(sample_size = sample_size, student_question_ratio = sqr)
+    mutate(sample_size = sample_size)
   
   # Calculating Stats like Mean and Sampling Error for each Item Parameter in both subpopulations in a given sample
   df.data <- df.data.sim.item %>%
     
     # e.g. group_by ("Partition 1", "Slip", Question 1"). this function is called for single sample size value only
-    group_by(group, parameter, questions, sample_size, student_question_ratio) %>% 
+    group_by(group, parameter, questions, sample_size) %>% 
     summarise( 
       total_count = n(),   # Simulation Count
       #na_count = sum(is.na(item_parameters)),
@@ -226,9 +230,9 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
       attempts = mean(attempts) # To average out attempts across simulations.
       
     ) %>% 
-    #mutate(sample_size = sample_size, student_question_ratio = sqr) %>% 
     
-    ungroup()  #dim(df.X.p1)[1])
+    
+    ungroup()  
   
   
   # Calculating Stats like Mean and Sampling Error for Overall Item Parameters in both subpopulations in a given sample.
@@ -241,7 +245,7 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
               ) %>%
     
     ungroup() %>% 
-    mutate(sample_size = sample_size, student_question_ratio = sqr) #dim(df.X.p1)[1])
+    mutate(sample_size = sample_size) #dim(df.X.p1)[1])
   
   #browser()
   # Stats for Fit Parameters
@@ -252,7 +256,7 @@ get_mean_sample_error <- function(X, Q, sample_size, sqr) {
       sampling_mean = mean(fit_value, na.rm = TRUE), 
       sampling_error = sqrt(sum((fit_value - sampling_mean)^2, na.rm = TRUE)/(n() - 1)), 
      
-    ) %>% mutate(sample_size = sample_size, student_question_ratio = sqr) %>% inner_join(  
+    ) %>% mutate(sample_size = sample_size) %>% inner_join(  
       df.data %>% distinct(group, attempts)
       )
   
