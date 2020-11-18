@@ -2,7 +2,7 @@
 library(janitor)
 
 
-n_boot = 10
+n_boot = 100
 
 get_sample_sizes <- function(dim.students, dim.questions) {
   
