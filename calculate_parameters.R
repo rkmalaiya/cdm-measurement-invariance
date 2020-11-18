@@ -4,6 +4,7 @@ library(janitor)
 
 n_boot = 100
 
+#This function is designed to get data set specific sample sizes
 get_sample_sizes <- function(dim.students, dim.questions) {
   
   #dim.students <- 525
@@ -31,7 +32,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   return(sample_sizes)
 }
 
-### Bootstrapping (without replacement) 
+# This function calculates the item parameters and model fit for DINA using CDM package
 get_parameter_estimates <- function(X.p,Q_reduced, group = "Group", Q_names) {
   
   df.cdm <- CDM::din(X.p, Q_reduced, progress=FALSE)
@@ -94,13 +95,12 @@ get_parameter_estimates <- function(X.p,Q_reduced, group = "Group", Q_names) {
 # This function would partition data into 2 sub-populations and calculation DINA for each sub-population
 cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) {
   
-  #print(dim(df))
-  #browser()
-  #df.t <- X
-  #Q_reduced = Q
+
+  #Generating bootstrapped data by using bootstrapped index provided by boot function
+  X <- df[i,] 
   
-  X <- df[i,] #Generating bootstrapped data by using bootstrapped index provided by boot function
-  X.s <- head(X, sample_size) # Taking only 1:sample_size data to create smaller sample from bootstrapped X.
+  #Taking only 1:sample_size data to create smaller sample from bootstrapped X
+  X.s <- head(X, sample_size) 
   
   X.p1.s <- X.s %>% head(round(dim(X.s)[1]/2)) # Partitition sample into two sub-populations.
   X.p2.s <- X.s %>% tail(round(dim(X.s)[1]/2))
@@ -214,14 +214,14 @@ get_mean_sample_error <- function(X, Q, sample_size) {
     select(-type) %>% rename(questions = entities, item_parameters = value) %>% 
     mutate(sample_size = sample_size)
   
-  # Calculating Stats like Mean and Sampling Error for each Item Parameter in both subpopulations in a given sample
+  # Calculating Stats like Mean and Sampling Error for each Item Parameter in both subpopulations in a given sample. 
+  # Also, mean will be used as Bagged item paramter estimate
   df.data <- df.data.sim.item %>%
     
-    # e.g. group_by ("Partition 1", "Slip", Question 1"). this function is called for single sample size value only
     group_by(group, parameter, questions, sample_size) %>% 
     summarise( 
       total_count = n(),   # Simulation Count
-      #na_count = sum(is.na(item_parameters)),
+      
       
       sampling_mean = mean(item_parameters), 
       sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 

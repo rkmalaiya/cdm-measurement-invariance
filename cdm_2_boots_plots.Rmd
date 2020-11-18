@@ -404,7 +404,7 @@ df.ind_z.ss <- df.sim.ss.item %>% filter(sample_size ==  max(sample_size)) %>%  
   mutate(attempts_disc = cut(attempts,breaks = c(0,5,15,max(.$attempts)), labels = c("[0-5]", "[5-15]", "15+"))) %>%
   spread(key = group, value = item_parameters) %>% 
   group_by(parameter, questions, attempts_disc, sim_no) %>% 
-  #group_by(sim_no, sample_size, parameter, student_question_ratio, questions, attempts_disc) %>%
+ 
   
   mutate(d = `Partition 1` - `Partition 2`,
          d_abs = abs(`Partition 1` - `Partition 2`)

@@ -196,12 +196,3 @@ write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_socialscience.
 write_rds(df.data.sim.item, "..\\data\\FirstYearProject\\df_data_sim_item_socialscience.rds")
 
 ```
-
-
-```{r}
-df.error <- read_rds("..\\data\\FirstYearProject\\df_error_socialscience.rds")
-
-df.error.agg <- read_rds("..\\data\\FirstYearProject\\df_error_agg_socialscience.rds")
-
-df.error.fit <- read_rds("..\\data\\FirstYearProject\\df_error_fit_socialscience.rds")
-```

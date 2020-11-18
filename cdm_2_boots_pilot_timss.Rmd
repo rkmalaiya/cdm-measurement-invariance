@@ -195,15 +195,3 @@ write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_timss.rds")
 write_rds(df.data.sim.item, "..\\data\\FirstYearProject\\df_data_sim_item_timss.rds")
 
 ```
-
-
-```{r}
-df.error <- read_rds("..\\data\\FirstYearProject\\df_error_timss.rds")
-
-df.error.agg <- read_rds("..\\data\\FirstYearProject\\df_error_agg_timss.rds")
-
-df.error.fit <- read_rds("..\\data\\FirstYearProject\\df_error_fit_timss.rds")
-
-```
-
-
