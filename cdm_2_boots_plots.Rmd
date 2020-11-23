@@ -48,13 +48,13 @@ path = ""
 
 
 ```{r}
-df.bagged.ec <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_ecpe.rds"))
+df.bagged.ec <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_ecpe.rds"))
 
-df.bagged.ec.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_ecpe.rds")) #Bagged-AB
+df.bagged.ec.agg <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_agg_ecpe.rds")) #Bagged-AB
 
-df.bagged.ec.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_ecpe.rds")) %>% mutate(dataset = "ECPE")
+df.bagged.ec.fit <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_fit_ecpe.rds")) %>% mutate(dataset = "ECPE")
 
-df.sim.ec.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_ecpe.rds")) #Bootstrap-AB
+df.sim.ec.item <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_data_sim_item_ecpe.rds")) #Bootstrap-AB
 
 df.bagged.ec.plot <- df.bagged.ec %>% inner_join(
   df.bagged.ec.agg
@@ -67,13 +67,13 @@ glimpse(df.bagged.ec.plot)
 
 
 ```{r}
-df.bagged.ti <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_timss.rds"))
+df.bagged.ti <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_timss.rds"))
 
-df.bagged.ti.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_timss.rds"))
+df.bagged.ti.agg <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_agg_timss.rds"))
 
-df.bagged.ti.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_timss.rds")) %>% mutate(dataset = "TIMSS")
+df.bagged.ti.fit <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_fit_timss.rds")) %>% mutate(dataset = "TIMSS")
 
-df.sim.ti.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_timss.rds"))
+df.sim.ti.item <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_data_sim_item_timss.rds"))
 
 df.bagged.ti.plot <- df.bagged.ti %>% inner_join(
   df.bagged.ti.agg
@@ -84,13 +84,13 @@ glimpse(df.bagged.ti.plot)
 
 
 ```{r}
-df.bagged.ss <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_socialscience.rds"))
+df.bagged.ss <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_socialscience.rds"))
 
-df.bagged.ss.agg <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_agg_socialscience.rds"))
+df.bagged.ss.agg <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_agg_socialscience.rds"))
 
-df.bagged.ss.fit <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_error_fit_socialscience.rds")) %>% mutate(dataset = "Social Psychology")
+df.bagged.ss.fit <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_error_fit_socialscience.rds")) %>% mutate(dataset = "Social Psychology")
 
-df.sim.ss.item <- read_rds(paste0("..\\data\\FirstYearProject\\",path,"\\df_data_sim_item_socialscience.rds"))
+df.sim.ss.item <- read_rds(paste0("..\\data\\measurement_invariance\\",path,"\\df_data_sim_item_socialscience.rds"))
 
 df.bagged.ss.plot <- df.bagged.ss %>% inner_join(
   df.bagged.ss.agg
@@ -200,7 +200,7 @@ df.mean_diff.ss <- df.bagged.plot.ss  %>% select(parameter, group, questions, sa
   
   group_by(dataset,parameter,sample_size, questions) %>% 
   mutate(abs_bias = abs(Partition1_mean - Partition2_mean)) %>%
-  ungroup()
+  ungroup();
   
 
 
@@ -538,7 +538,7 @@ df.ind_z.ss %>%
   guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
   scale_y_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5), limits = c(0,0.47), sec.axis = dup_axis())
 
- ggsave("ecpe_mab_bmab.png", dpi = "retina", width = 8, height = 3.5, units = "in")
+ ggsave("ecpe_mab_bmab.png", dpi = "print", width = 8, height = 3.5, units = "in")
 
 ```
 
@@ -572,7 +572,7 @@ df.ind_z.ti %>% select(parameter, attempts_disc, MAB) %>% rename(metric = MAB) %
   
   scale_y_continuous(breaks = c(0,0.1,0.2,0.3,0.4,0.5), limits = c(0,0.55), sec.axis = dup_axis())
 
- ggsave("timss_mab_bmab.png", dpi = "retina", width = 8, height = 3.5, units = "in")
+ ggsave("timss_mab_bmab.png", dpi = "print", width = 8, height = 3.5, units = "in")
 
 ```
 
@@ -613,7 +613,7 @@ df.ind_z.ss %>% select(parameter, MAB, attempts_disc) %>% rename(metric = MAB) %
   scale_color_uchicago(palette = "dark")
 
 
- ggsave("combined_ss.png", dpi = "retina", width = 8, height = 3.5, units = "in") 
+ ggsave("combined_ss.png", dpi = "print", width = 8, height = 3.5, units = "in") 
 
 ```
 

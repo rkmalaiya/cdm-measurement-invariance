@@ -24,21 +24,8 @@ source('calculate_parameters.R')
 options(max.print=100)
 
 
-#df.X <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\X.csv") %>% mutate_all(as.integer)
-#df.Q <- read_csv("C:\\Users\\rkm160630\\OneDrive - The University of Texas at Dallas\\Ritesh Folder\\POCs\\data\\FirstYearProject\\Q.csv") %>% mutate_all(as.integer)
-
-
-#X = df.X %>% select(-SubjectID, -File) %>% rename_all(function(x) paste0("Q",x))
-#Q = df.Q %>% select(-Q_UNIQUE_ID) %>% rename_all(function(x) paste0("S",x))
-#X <- as.data.frame(X) 
-#Q <- as.data.frame(Q) 
-
 X = data.ecpe$data %>% select(-id)
 Q = data.ecpe$q.matrix
-
-#Q <- data.timss11.G4.AUT.part$q.matrix1
-#X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
-#Q <- Q[,-1]
 
 
 ```
@@ -171,12 +158,12 @@ for(i in 2:length(sample_sizes)) {
 
 
 ```{r}
-write_rds(df.error, "..\\data\\FirstYearProject\\df_error_ecpe.rds")
+write_rds(df.error, "..\\data\\measurement_invariance\\df_error_ecpe.rds")
 
-write_rds(df.error.agg, "..\\data\\FirstYearProject\\df_error_agg_ecpe.rds")
+write_rds(df.error.agg, "..\\data\\measurement_invariance\\df_error_agg_ecpe.rds")
 
-write_rds(df.error.fit, "..\\data\\FirstYearProject\\df_error_fit_ecpe.rds")
+write_rds(df.error.fit, "..\\data\\measurement_invariance\\df_error_fit_ecpe.rds")
 
-write_rds(df.data.sim.item, "..\\data\\FirstYearProject\\df_data_sim_item_ecpe.rds")
+write_rds(df.data.sim.item, "..\\data\\measurement_invariance\\df_data_sim_item_ecpe.rds")
 
 ```

@@ -90,7 +90,7 @@ get_parameter_estimates <- function(X.p,Q_reduced, group = "Group", Q_names) {
   
   return (df.sim)
   
-}
+};
 
 # This function would partition data into 2 sub-populations and calculation DINA for each sub-population
 cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) {
@@ -193,7 +193,7 @@ get_mean_sample_error <- function(X, Q, sample_size) {
     X.index <- X.index$value
     
     
-    df.data.sim = cdm_fn(X, Q, sample_size = sample_size, X.index, do_print = TRUE) %>% mutate(sim_no = 1)
+    df.data.sim = cdm_fn(X, Q, sample_size = sample_size, i=X.index, do_print = TRUE) %>% mutate(sim_no = 1)
 
     #browser()
     for (i_val in 2: nrow(X.bt)) {
@@ -202,7 +202,7 @@ get_mean_sample_error <- function(X, Q, sample_size) {
       X.index <- X.index$value
       
       
-      df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, X.index)  %>% mutate(sim_no = i_val)
+      df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, i=X.index)  %>% mutate(sim_no = i_val)
       
       df.data.sim = df.data.sim %>% bind_rows(df.data.sim.t)
     
