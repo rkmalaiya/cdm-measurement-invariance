@@ -64,11 +64,18 @@ dim(X)[1] / dim(X)[2]
 ```
 
 
+# Missing Responses
+## Total missing
 ```{r}
-#n=dim(X)[1]
-#X <- X %>% sample_n(size = n, replace = FALSE)
+sum(is.na(X))
 ```
 
+## Total Data
+```{r}
+(dim(X)[1] * dim(X)[2])
+```
+
+## Percentage missing
 ```{r}
 percent_na <- round((sum(is.na(X)) / (dim(X)[1] * dim(X)[2])) * 100,2)
 percent_na
