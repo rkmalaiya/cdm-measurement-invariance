@@ -40,8 +40,8 @@ library(ggsci)
 ```{r}
 rm(list = ls())
 options(max.print=100)
-#path = "report"
 path = ""
+
 
 
 ```

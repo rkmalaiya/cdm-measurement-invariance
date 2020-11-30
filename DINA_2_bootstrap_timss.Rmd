@@ -1,0 +1,404 @@
+---
+title: "CDM Pilot Study for TIMSS"
+output: html_notebook
+---
+
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(CDM)
+library(boot)
+library(tidyverse)
+library(stringi)
+library(stringr)
+```
+
+# Read Data
+```{r}
+rm(list = ls())
+source('calculate_parameters.R')
+options(max.print=100)
+
+
+Q <- data.timss11.G4.AUT.part$q.matrix1
+X <- data.timss11.G4.AUT.part$data[,paste(Q$item)]
+Q <- Q[,-1]
+
+
+```
+
+```{r}
+X 
+```
+
+```{r }
+Q
+```
+
+# Summary of Attempts
+
+## Items administered 
+```{r}
+
+summary(colSums(!is.na(X[1:56,])))
+
+```
+
+## Questions shown to each student
+
+```{r}
+
+X %>% mutate(na_per_row = rowSums(is.na(.[1:47]))) %>% group_by(na_per_row) %>% tally()
+
+
+```
+
+
+# Student to Item Ratio
+
+```{r}
+
+dim(X)[1] / dim(X)[2]
+
+```
+
+# Missing Responses
+## Total missing
+```{r}
+sum(is.na(X))
+```
+
+## Total Data
+```{r}
+(dim(X)[1] * dim(X)[2])
+```
+
+## Percentage missing
+```{r}
+percent_na <- round((sum(is.na(X)) / (dim(X)[1] * dim(X)[2])) * 100,2)
+percent_na
+```
+
+
+# Student Performance
+
+
+# Bootstrap Sample 
+
+Boot requires a custom function that would return row wise stats. In case of dataframe, each row is considered as a multi-variate observation. First parameter of the custom function takes the data input and second parameter takes the importance of data given current bootstrap iteration. stype defines second parameter.
+
+
+
+```{r}
+
+
+
+#X <- as.data.frame(X) 
+#Q <- as.data.frame(Q) 
+
+
+
+
+#model_dina <- gdina(data =  data.ecpe$data[,-1] , q.matrix =  data.ecpe$q.matrix, maxit = 10, rule = "GDINA2")
+
+model_dina <- din(data = X, q.matrix =  Q, progress = FALSE)
+
+```
+
+
+
+# Calculate item parameters
+
+```{r}
+# Let's suffle X
+#X <- X %>% sample_frac(1)
+
+#Divide X to 2 parts
+#X.p1 <- X %>% head(round(dim(X)[1]/2))
+#X.p2 <- X %>% tail(round(dim(X)[1]/2))
+
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+
+sample_sizes <- get_sample_sizes(dim(X)[1], dim(X)[2])
+
+
+colSums(!is.na(X)) 
+
+
+df.t <- get_mean_sample_error(X, Q, sample_sizes[1])
+
+df.error <- df.t[[1]]
+df.error.agg <- df.t[[2]]
+df.error.fit <- df.t[[3]]
+df.data.sim.item <- df.t[[4]]
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+for(i in 2:length(sample_sizes)) {
+  
+  df.t <- get_mean_sample_error(X, Q, sample_sizes[i])
+  
+  df.error.t <- df.t[[1]]
+  df.error.agg.t <- df.t[[2]]
+  df.error.fit.t <- df.t[[3]]
+  df.data.sim.item.t <- df.t[[4]]
+  
+  df.error <- df.error %>% union(
+    
+    df.error.t
+  )
+  
+  df.error.agg <- df.error.agg %>% union(
+    
+    df.error.agg.t
+  )
+
+  df.error.fit <- df.error.fit %>% union(
+    
+    df.error.fit.t
+  )  
+  
+  df.data.sim.item <- df.data.sim.item %>% union(
+  
+  df.data.sim.item.t
+  )
+  
+}
+
+#debugonce(get_mean_sample_error)
+
+```
+
+```{r}
+
+# Writing to files so that parameter estimation doesn't need to be executed repeatedly during Dev phase.
+
+write_rds(df.error, "..\\data\\measurement_invariance\\df_error_timss.rds")
+
+write_rds(df.error.agg, "..\\data\\measurement_invariance\\df_error_agg_timss.rds")
+
+write_rds(df.error.fit, "..\\data\\measurement_invariance\\df_error_fit_timss.rds")
+
+write_rds(df.data.sim.item, "..\\data\\measurement_invariance\\df_data_sim_item_timss.rds")
+
+```
+
+# Plots / Results
+
+```{r}
+
+# Checkpoint: Read the files and make plots directly from here. This avoids execution of parameter estimation repeatedly during Dev phase.
+
+df.bagged.ti <- read_rds(paste0("..\\data\\measurement_invariance\\df_error_timss.rds"))
+
+df.bagged.ti.agg <- read_rds(paste0("..\\data\\measurement_invariance\\df_error_agg_timss.rds"))
+
+df.bagged.ti.fit <- read_rds(paste0("..\\data\\measurement_invariance\\df_error_fit_timss.rds")) %>% mutate(dataset = "TIMSS")
+
+df.sim.ti.item <- read_rds(paste0("..\\data\\measurement_invariance\\df_data_sim_item_timss.rds"))
+
+df.bagged.ti.plot <- df.bagged.ti %>% inner_join(
+  df.bagged.ti.agg
+) %>% mutate(dataset = "TIMSS")
+
+glimpse(df.bagged.ti.plot)
+```
+
+
+
+```{r}
+
+breaks = c(0,10,20,40, 80, 160, 320)
+labels = c(10,20,40,80, 160, 320)
+
+#breaks = c(0,5,10,15,20,25,40, 80, 160, 320)
+#labels = c(5,10,15,20,25,40,80, 160, 320)
+
+df.bagged.plot <- df.bagged.ti.plot %>% 
+  
+  mutate(questions = factor(questions)) %>% 
+  
+  group_by(dataset, group, parameter, sample_size) %>%
+  
+    mutate(question_n = n(), qsr = round(n()/sample_size)) %>% 
+  ungroup() %>%
+  
+  mutate(attempts = round(attempts)) %>% 
+  
+  #Average attempts between partitions for each question.
+  
+  group_by(dataset, parameter, questions, sample_size) %>%
+    mutate(attempts_disc_n = round(mean(attempts))) %>% ungroup() %>%
+    mutate(attempts_disc = cut(attempts_disc_n, 
+                          breaks = c(breaks, max(.$attempts)),
+                          labels = c(labels, "++"),
+                          #breaks = c(0,10,20,40, 80, 160, 320, max(.$attempts)),
+                          #labels = c(10,20,40,80, 160, 320, "++"),
+                          #breaks = c(0,5, 10,15,20,25,30,35, max(.$attempts)),
+                          #labels = c(5, 10,15,20,25,30,35,"35+"),
+                          include.lowest = TRUE, right = TRUE, ordered_result = TRUE))  %>%
+    
+    
+ungroup() %>%
+  # Adding upsample column to represent attempts that were generated due to non-parameteric bootstrap upsampling
+  mutate(upsampled = case_when(
+    #(dataset == "TIMSS" & attempts > 400)  ~ "Upsampled IAC", #ratio_n > 21
+    #(dataset == "Social Psychology (Upsample)")  ~ "Upsampled Dataset", #ratio_n > 0.5  & attempts > 15
+    TRUE ~ "Original Dataset"
+    
+    
+  )) %>%
+  
+  
+  #mutate(sampling_error = sampling_error / sqrt(1000)) %>% # To get Smulation Error
+  
+  # Average avg_attempts between partitions aggregated over all questions.
+  
+  group_by(dataset, parameter, attempts) %>%
+  mutate(avg_attempts = round(mean(avg_attempts))) %>%
+  
+  ungroup() %>%
+  arrange(dataset, group, parameter, sample_size)
+
+df.bagged.plot <- df.bagged.plot %>% mutate(qsr = factor(qsr, ordered = TRUE), 
+                                          sample_size = factor(sample_size, ordered = TRUE), 
+                                          avg_attempts = factor(avg_attempts, ordered = TRUE)
+                                          )
+
+# Creating a seperate plot data frame for Social Psychology because the breaks are different than ECPE and TIMSS
+df.bagged.plot.ss <- df.bagged.plot %>% filter(dataset == "Social Psychology") %>% filter(sample_size == max(sample_size)) %>% ## Get Full data, no sample sizes
+  mutate(attempts_disc = cut(attempts,breaks = c(0,5,15,max(.$attempts)), labels = c("[0-5]", "[5-15]", "15+")))
+
+
+#df.bagged.plot %>% filter(dataset == "Social Psychology (Upsample)") %>% select(sample_size) %>% distinct()
+```
+
+
+## Calculating Absolute Bias 
+```{r}
+
+df.mean_diff <- df.bagged.plot  %>% select(parameter, group, questions, sample_size, sampling_mean, attempts_disc, dataset, upsampled, total_count) %>% 
+  spread(key="group", value = "sampling_mean") %>% rename("Partition1_mean" = `Partition 1`, "Partition2_mean" = `Partition 2`)  %>% 
+  
+  group_by(dataset,parameter,sample_size, questions) %>% 
+  mutate(abs_bias = abs(Partition1_mean - Partition2_mean)) %>%
+  ungroup()
+
+```
+
+## Bagged-AB
+```{r}
+
+df.t <- df.mean_diff %>% filter(dataset == "TIMSS") 
+
+
+#df.t$attempts_disc <- recode(df.t$attempts_disc, "400" = "300")
+
+df.t %>%
+
+  
+  ggplot() + 
+  aes(x= attempts_disc, y = abs_bias, fill = paste(parameter, "Parameter")) +
+  
+  #geom_point(size = 3) +
+  geom_boxplot(alpha = 0.6, show.legend = FALSE) +
+ 
+  facet_grid(parameter~.) +
+  labs(x="Item Administered Count (IAC)", y = "Bagged-AB", fill = "") + 
+  theme_pubclean() + theme(legend.position = "bottom", 
+                           axis.text=element_text(size=10),
+                           legend.text = element_text(size = 10),
+                           
+                           strip.text = element_text(size = 10),
+                           axis.title=element_text(size=10),
+                           
+                           #panel.border = element_rect(colour = "black", fill=NA, size=2, linetype = "dotted"),
+                           #strip.background = element_rect(fill = "White", colour = "Black")
+                           
+                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  #scale_fill_brewer(palette="Set2") + 
+  scale_fill_manual(values = c("#E46F1F", "#7AC043"))  #+ 
+  #scale_y_continuous(breaks = seq(0,0.2,0.02))
+  
+
+  #ggsave("TI_g.png", dpi = "retina", width = 15, height = 6, units = "in") 
+
+```
+
+## Bootstrap-AB
+```{r}
+
+df.ind_z.ti <- df.sim.ti.item %>%
+  #filter(questions == "M051305", sample_size == 1010) %>% 
+  mutate(attempts_disc = cut(attempts, 
+                          breaks = c(breaks, max(.$attempts)),
+                          labels = c(labels, "++"),
+                          #breaks = c(0,10,20,40, 80, 160, 320, max(.$attempts)),
+                          #labels = c(10,20,40,80, 160, 320, "++"),
+                          include.lowest = TRUE, right = TRUE, ordered_result = TRUE)) %>% 
+           
+                          #                 cut(attempts, 
+                          #                 breaks = c(seq(min(.$attempts), 100, 10), seq(100, max(.$attempts), 100), max(.$attempts)), 
+                          #                 labels = c(seq(min(.$attempts), 100, 10), seq(100, max(.$attempts), 100), max(.$attempts))[-1],
+                          #                 right = TRUE, include.lowest = TRUE)) 
+
+  
+  select(-attempts)  %>% 
+  spread(key = group, value = item_parameters) %>% 
+  
+  group_by(parameter, questions, attempts_disc, sim_no) %>% 
+  #group_by(sim_no, sample_size, parameter, student_question_ratio, questions, attempts_disc) %>%
+  
+  mutate(d = `Partition 1` - `Partition 2`,
+         d_abs = abs(`Partition 1` - `Partition 2`)
+         ) %>% 
+  na.omit() %>% # To remove the cases where item couldn't find same attempt count (discrete) for same simulation and same sample size
+  
+  group_by(parameter, questions, attempts_disc) %>%
+  
+  summarise(Mean = mean(d),
+            MAB = mean(d_abs),
+            `Standard Deviation` = sd(d), # This is sample standard deviation
+            #Z = Mean/(`Standard Deviation` + 0.00001),
+            #cor_coef = cor(`Partition 1` , `Partition 2`, use = "pairwise.complete.obs", method = "kendall"),
+            #var_coef = `Standard Deviation`/abs(Mean)
+         ) %>% ungroup() %>%
+  #mutate(is_invariant = ifelse(Mean <= 0.1 & `Standard Deviation` <= 0.1, TRUE, FALSE))
+  mutate(is_invariant = ifelse(MAB < 0.1, TRUE, FALSE))
+```
+
+
+```{r}
+
+df.ind_z.ti %>% #write_excel_csv("../data/FirstYearProject/individual_z.csv")
+ ggplot() + 
+  aes(x=attempts_disc, y = MAB, fill = paste(parameter, "Parameter")) + 
+  #geom_jitter(width = 0.1, alpha = 0.15) + 
+  geom_boxplot(alpha = 0.6, show.legend = FALSE) + 
+  facet_grid(parameter~.) +
+  labs(x="Item Administered Count (IAC)", y = "Bootstrap-AB", fill = "") + 
+  theme_pubclean()+ theme(legend.position = "bottom", 
+                           axis.text=element_text(size=10),
+                           legend.text = element_text(size = 10),
+                           
+                           strip.text = element_text(size = 10),
+                           axis.title=element_text(size=10)
+                           
+                           ) + guides(colour = guide_legend(override.aes = list(alpha = 1))) +
+  #scale_fill_brewer(palette="Set2") + 
+  scale_fill_manual(values = c("#E46F1F", "#7AC043")) + 
+  scale_y_continuous(breaks = seq(0,0.6,0.1))
+
+  #ggsave("TI.png", dpi = "retina", width = 15, height = 6, units = "in") 
+
+
+```

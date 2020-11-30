@@ -1,8 +1,7 @@
-
 library(janitor)
 
 
-n_boot = 100
+n_boot = 10 #n_boot = 100 has been used for the published study. Set it for 10 to reduce processing time during dev phase.
 
 #This function is designed to get data set specific sample sizes
 get_sample_sizes <- function(dim.students, dim.questions) {
@@ -13,7 +12,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   #dim.students <- 525
   #dim.questions <- 939
   
-  student_question_ratios = c( 0.3, 0.4, 0.5, 1,2,4, 6, 8, 10,  15, 20, 25, 30, 100) #0.1, 0.2,   # Student/Questions
+  student_question_ratios = c( 0.3, 0.4, 0.5, 1,2,4, 6, 8, 10,  15, 20, 25, 30, 100) # Student/Questions
   
   sample_sizes <- round(dim.questions * student_question_ratios)
   allow_sizes <- sample_sizes <= dim.students & sample_sizes > 5
@@ -31,6 +30,7 @@ get_sample_sizes <- function(dim.students, dim.questions) {
   
   return(sample_sizes)
 }
+
 
 # This function calculates the item parameters and model fit for DINA using CDM package
 get_parameter_estimates <- function(X.p,Q_reduced, group = "Group", Q_names) {
@@ -90,12 +90,13 @@ get_parameter_estimates <- function(X.p,Q_reduced, group = "Group", Q_names) {
   
   return (df.sim)
   
-};
+}
+
 
 # This function would partition data into 2 sub-populations and calculation DINA for each sub-population
 cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) {
   
-
+  
   #Generating bootstrapped data by using bootstrapped index provided by boot function
   X <- df[i,] 
   
@@ -110,7 +111,7 @@ cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) 
   
   # This code helps to remove the questions that has not been answered by both the groups.
   Q_dist <-  X.p1.s %>% gather() %>% distinct(key) %>% inner_join(
-   ( X.p2.s %>% gather()%>% distinct(key)), by = "key"
+    ( X.p2.s %>% gather()%>% distinct(key)), by = "key"
   ) %>% distinct(key)
   
   Q_reduced <- Q %>% mutate(key = colnames(X)) %>% semi_join(Q_dist) %>% select(-key)
@@ -140,15 +141,15 @@ cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) 
     mutate(group = "Partition 1") %>% 
     
     union (
-    
+      
       df.X.p2 %>% 
         summarise_all(funs(sum((!is.na(.))))) %>% 
         gather(key="entities", value = "attempts") %>% 
         mutate(group = "Partition 2")   
-  )
-    
+    )
   
-
+  
+  
   ####################################################################
   # Estimating parameters for Partition 1
   
@@ -156,14 +157,14 @@ cdm_fn <- function(df, Q, sample_size = -1, i = 1:dim(df)[1], do_print = FALSE) 
   
   ####################################################################
   # Estimating parameters for Partition 2
- 
+  
   df.p2 <- get_parameter_estimates(df.X.p2, Q_reduced, "Partition 2", Q_names)
   
   df.data.sim <- rbind(df.p1, df.p2) %>% left_join(df.attempts)
   
   # Returning item and model fit statistics for both partitions.
   return(df.data.sim)
-
+  
   
 } 
 
@@ -185,30 +186,30 @@ get_boot_index <- function(X) {
 # This function calculate non-parameter bootstrapped statistics for a given sample size
 get_mean_sample_error <- function(X, Q, sample_size) {
   
-    print( c("Starting ", n_boot, " bootstrap for sample size:", sample_size) )
+  print( c("Starting ", n_boot, " bootstrap for sample size:", sample_size) )
   
-    # Bootstrap indexes are created from the whole data. However, DINA parameters are estimated only for the given sample size
-    X.bt <- get_boot_index(X) %>% as.data.frame()
-    X.index <- X.bt[1,]  %>% gather() 
+  # Bootstrap indexes are created from the whole data. However, DINA parameters are estimated only for the given sample size
+  X.bt <- get_boot_index(X) %>% as.data.frame()
+  X.index <- X.bt[1,]  %>% gather() 
+  X.index <- X.index$value
+  
+  
+  df.data.sim = cdm_fn(X, Q, sample_size = sample_size, i=X.index, do_print = TRUE) %>% mutate(sim_no = 1)
+  
+  #browser()
+  for (i_val in 2: nrow(X.bt)) {
+    
+    X.index <- X.bt[i_val,]  %>% gather() 
     X.index <- X.index$value
     
     
-    df.data.sim = cdm_fn(X, Q, sample_size = sample_size, i=X.index, do_print = TRUE) %>% mutate(sim_no = 1)
-
-    #browser()
-    for (i_val in 2: nrow(X.bt)) {
+    df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, i=X.index)  %>% mutate(sim_no = i_val)
     
-      X.index <- X.bt[i_val,]  %>% gather() 
-      X.index <- X.index$value
-      
-      
-      df.data.sim.t <- cdm_fn(X, Q, sample_size = sample_size, i=X.index)  %>% mutate(sim_no = i_val)
-      
-      df.data.sim = df.data.sim %>% bind_rows(df.data.sim.t)
+    df.data.sim = df.data.sim %>% bind_rows(df.data.sim.t)
     
-    } # Gathering data for all sample sizes
-
-    
+  } # Gathering data for all sample sizes
+  
+  
   #browser()
   df.data.sim.item <- df.data.sim %>% filter(type == "item") %>% 
     select(-type) %>% rename(questions = entities, item_parameters = value) %>% 
@@ -226,7 +227,7 @@ get_mean_sample_error <- function(X, Q, sample_size) {
       sampling_mean = mean(item_parameters), 
       sampling_error = sqrt(sum((item_parameters - sampling_mean)^2)/(n() - 1)), 
       sampling_variance = sampling_error^2,
-
+      
       attempts = mean(attempts) # To average out attempts across simulations.
       
     ) %>% 
@@ -242,7 +243,7 @@ get_mean_sample_error <- function(X, Q, sample_size) {
     group_by(group, parameter) %>% 
     summarise(sampling_error_mean = sqrt(sum(sampling_variance)/(n())),
               avg_attempts = round(mean(attempts))
-              ) %>%
+    ) %>%
     
     ungroup() %>% 
     mutate(sample_size = sample_size) #dim(df.X.p1)[1])
@@ -252,14 +253,15 @@ get_mean_sample_error <- function(X, Q, sample_size) {
   df.data.fit <- df.data.sim %>% filter(entities == "model_fit") %>% select(-entities) %>% rename(fit = type, fit_value = value) %>%
     group_by(group, parameter, fit) %>%
     summarise( 
-     
+      
       sampling_mean = mean(fit_value, na.rm = TRUE), 
       sampling_error = sqrt(sum((fit_value - sampling_mean)^2, na.rm = TRUE)/(n() - 1)), 
-     
+      
     ) %>% mutate(sample_size = sample_size) %>% inner_join(  
       df.data %>% distinct(group, attempts)
-      )
+    )
   
   return(list(df.data,df.data.agg, df.data.fit, df.data.sim.item))
   
 }
+
